@@ -13,9 +13,10 @@ path = "src/main.rs"
 
 [dependencies]
 sentrux-core = { path = "../sentrux-core" }
+sentrux-pro = { path = "../../sentrux-pro", optional = true }
 eframe = { workspace = true }
 egui = { workspace = true }
 
 [features]
 default = []
-pro = ["sentrux-core/pro"]  # Pro tools provided by separate sentrux-pro crate
+pro = ["sentrux-core/pro", "dep:sentrux-pro"]  # Pro tools provided by separate sentrux-pro crate
