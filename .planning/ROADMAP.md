@@ -63,7 +63,12 @@ Plans:
   3. Test coverage percentages from cargo-llvm-cov are shown per-file in the detail panel
   4. A new ColorMode variant shows files colored by test coverage (green = well-covered, red = uncovered)
   5. Clippy warnings (pedantic/nursery categories) are counted per-file and shown in the detail panel
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02.1-01-PLAN.md — Types, subprocess adapters, color functions, and ColorMode variants for graph-metrics, coverage, and clippy
+- [ ] 02.1-02-PLAN.md — Wire reports through scan pipeline, AppState, RenderContext, and file_color() dispatch
+- [ ] 02.1-03-PLAN.md — File detail panel sections, coverage toolbar button, and community highlight interaction
 
 ### Phase 3: Git Diff Overlay
 **Goal**: A developer can switch to git diff mode and immediately see which files changed recently — color intensity tells them how much changed, and they control the time window
@@ -91,11 +96,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
 | 2. PMAT Integration | 3/4 | Complete    | 2026-03-15 |
+| 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
