@@ -221,31 +221,8 @@ fn draw_git_diff_section(ui: &mut Ui, state: &AppState, path: &str) {
         label_row(ui, "Lines removed:", &format!("-{}", diff_data.lines_removed));
         label_row(ui, "Commits:", &format!("{}", diff_data.commit_count));
 
-        // Check for historical snapshot — show metric deltas if available
-        let snapshot_path = state.root_path.as_ref().map(|r| {
-            std::path::Path::new(r).join(".sentrux").join("snapshot.json")
-        });
-        let snapshot_exists = snapshot_path
-            .as_ref()
-            .is_some_and(|p| p.exists());
-
-        if snapshot_exists {
-            ui.separator();
-            ui.label(
-                egui::RichText::new("Snapshot available — metric deltas coming soon")
-                    .monospace()
-                    .size(9.0)
-                    .color(ui.visuals().weak_text_color()),
-            );
-        } else {
-            ui.separator();
-            ui.label(
-                egui::RichText::new("No historical snapshot — save a snapshot to enable metric deltas")
-                    .monospace()
-                    .size(9.0)
-                    .color(ui.visuals().weak_text_color()),
-            );
-        }
+        // Metric deltas (TDG/coverage/clippy changes) will be shown here
+        // once analysis snapshot save/load is wired up.
     });
 }
 

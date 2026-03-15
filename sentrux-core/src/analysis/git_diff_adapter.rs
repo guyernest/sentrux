@@ -3,34 +3,16 @@
 //! Provides background thread spawning for on-demand git diff analysis,
 //! plus save/load functions for analysis snapshots stored in `.sentrux/snapshot.json`.
 
-use crate::app::channels::ScanMsg;
 use crate::core::pmat_types::{AnalysisSnapshot, GitDiffReport};
 use crate::metrics::evo::git_walker::{walk_git_log_windowed, DiffWindow};
-use crossbeam_channel::Sender;
 
 // ── Background thread spawning ────────────────────────────────────────────
-
-/// Spawn a background thread to compute a git diff report and deliver it via `ScanMsg`.
-///
-/// On success, sends `ScanMsg::GitDiffReady(report)`.
-/// On failure, sends `ScanMsg::GitDiffError(message)`.
-pub fn spawn_git_diff_thread(root: String, window: DiffWindow, scan_msg_tx: Sender<ScanMsg>) {
-    std::thread::spawn(move || {
-        match compute_git_diff_report(&root, window) {
-            Ok(report) => {
-                let _ = scan_msg_tx.send(ScanMsg::GitDiffReady(report));
-            }
-            Err(e) => {
-                let _ = scan_msg_tx.send(ScanMsg::GitDiffError(e));
-            }
-        }
-    });
-}
 
 /// Compute a `GitDiffReport` for the given root and window.
 ///
 /// Calls `walk_git_log_windowed`, then aggregates results into a `GitDiffReport`.
-fn compute_git_diff_report(root: &str, window: DiffWindow) -> Result<GitDiffReport, String> {
+/// Called from a background thread spawned by `draw_panels::maybe_spawn_git_diff_thread`.
+pub fn compute_git_diff_report(root: &str, window: DiffWindow) -> Result<GitDiffReport, String> {
     let root_path = std::path::Path::new(root);
     let walk = walk_git_log_windowed(root_path, window)?;
     Ok(GitDiffReport::from_walk(walk.records, walk.new_file_paths, window))
@@ -69,8 +51,14 @@ pub fn load_snapshot_at_boundary(root: &str, boundary_epoch: i64) -> Option<Anal
         if checked >= 1000 {
             break;
         }
-        let oid = oid_result.ok()?;
-        let commit = repo.find_commit(oid).ok()?;
+        let oid = match oid_result {
+            Ok(o) => o,
+            Err(_) => { checked += 1; continue; }
+        };
+        let commit = match repo.find_commit(oid) {
+            Ok(c) => c,
+            Err(_) => { checked += 1; continue; }
+        };
         checked += 1;
 
         if commit.time().seconds() > boundary_epoch {
@@ -78,10 +66,22 @@ pub fn load_snapshot_at_boundary(root: &str, boundary_epoch: i64) -> Option<Anal
         }
 
         // Look for `.sentrux/snapshot.json` in this commit's tree
-        let tree = commit.tree().ok()?;
-        let entry = tree.get_path(std::path::Path::new(".sentrux/snapshot.json")).ok()?;
-        let blob = repo.find_blob(entry.id()).ok()?;
-        let content = std::str::from_utf8(blob.content()).ok()?;
+        let tree = match commit.tree() {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        let entry = match tree.get_path(std::path::Path::new(".sentrux/snapshot.json")) {
+            Ok(e) => e,
+            Err(_) => continue, // commit doesn't have snapshot file — expected
+        };
+        let blob = match repo.find_blob(entry.id()) {
+            Ok(b) => b,
+            Err(_) => continue,
+        };
+        let content = match std::str::from_utf8(blob.content()) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
         if let Ok(snapshot) = serde_json::from_str::<AnalysisSnapshot>(content) {
             return Some(snapshot);
         }
@@ -95,38 +95,8 @@ pub fn load_snapshot_at_boundary(root: &str, boundary_epoch: i64) -> Option<Anal
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::pmat_types::GitDiffReport;
     use crate::metrics::evo::git_walker::DiffWindow;
     use std::collections::HashMap;
-
-    #[test]
-    fn spawn_git_diff_thread_sends_git_diff_ready_on_nonexistent_repo() {
-        // A non-existent root will cause git discover to fail → GitDiffError
-        let (tx, rx) = crossbeam_channel::bounded(1);
-        spawn_git_diff_thread("/nonexistent/path/that/does/not/exist".to_string(), DiffWindow::TimeSecs(3600), tx);
-        let msg = rx.recv().expect("should receive a message");
-        assert!(matches!(msg, ScanMsg::GitDiffError(_)), "expected GitDiffError for invalid repo");
-    }
-
-    #[test]
-    fn spawn_git_diff_thread_sends_git_diff_ready_on_valid_repo() {
-        // Use the workspace root (a real git repo)
-        let workspace_root = env!("CARGO_MANIFEST_DIR");
-        let root = std::path::Path::new(workspace_root)
-            .parent() // sentrux-core → sentrux workspace root
-            .unwrap_or(std::path::Path::new(workspace_root))
-            .to_string_lossy()
-            .to_string();
-        let (tx, rx) = crossbeam_channel::bounded(1);
-        // Use CommitCount(1) for fast test — just walk the single most recent commit
-        spawn_git_diff_thread(root, DiffWindow::CommitCount(1), tx);
-        let msg = rx.recv().expect("should receive a message");
-        // Should be either GitDiffReady or GitDiffError (both are valid depending on repo state)
-        assert!(
-            matches!(msg, ScanMsg::GitDiffReady(_)) || matches!(msg, ScanMsg::GitDiffError(_)),
-            "should receive GitDiffReady or GitDiffError"
-        );
-    }
 
     #[test]
     fn compute_git_diff_report_invalid_root_returns_err() {

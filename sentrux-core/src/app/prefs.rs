@@ -15,13 +15,10 @@ use serde::{Deserialize, Serialize};
 
 const PREFS_KEY: &str = "sentrux_user_prefs";
 
-fn default_diff_window() -> DiffWindow {
-    DiffWindow::TimeSecs(86400)
-}
+/// Default custom commit count for DiffWindow::CommitCount.
+const DEFAULT_CUSTOM_N: u32 = 10;
 
-fn default_custom_n() -> u32 {
-    10
-}
+fn default_custom_n() -> u32 { DEFAULT_CUSTOM_N }
 
 /// Serializable subset of AppState that persists across app restarts.
 /// Stored in eframe's built-in ron-format storage.
@@ -36,7 +33,7 @@ pub struct UserPrefs {
     pub show_all_edges: bool,
     pub activity_panel_open: bool,
     pub last_root_path: Option<String>,
-    #[serde(default = "default_diff_window")]
+    #[serde(default)]
     pub git_diff_window: DiffWindow,
     #[serde(default = "default_custom_n")]
     pub git_diff_custom_n: u32,
@@ -54,8 +51,8 @@ impl Default for UserPrefs {
             show_all_edges: false,
             activity_panel_open: false,
             last_root_path: None,
-            git_diff_window: default_diff_window(),
-            git_diff_custom_n: default_custom_n(),
+            git_diff_window: DiffWindow::default(),
+            git_diff_custom_n: DEFAULT_CUSTOM_N,
         }
     }
 }

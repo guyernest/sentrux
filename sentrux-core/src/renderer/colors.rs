@@ -11,6 +11,9 @@ pub const STATUS_PASS: Color32 = Color32::from_rgb(72, 191, 145);
 pub const STATUS_WARN: Color32 = Color32::from_rgb(255, 193, 7);
 pub const STATUS_FAIL: Color32 = Color32::from_rgb(244, 67, 54);
 
+/// Muted gray for files with no data in the active color mode (unchanged, uninstrumented, etc.).
+pub const NO_DATA_GRAY: Color32 = Color32::from_rgb(50, 52, 55);
+
 /// Language → color mapping via O(1) match.
 pub fn language_color(lang: &str) -> Color32 {
     let (r, g, b) = match lang {

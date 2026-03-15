@@ -371,7 +371,7 @@ fn color_by_git_diff(ctx: &RenderContext, path: &str) -> Color32 {
     };
     let data = match report.by_file.get(path) {
         Some(d) => d,
-        None => return egui::Color32::from_rgb(50, 52, 55), // muted gray (GDIT-04)
+        None => return colors::NO_DATA_GRAY, // muted gray (GDIT-04)
     };
     if data.is_new_file {
         return colors::git_diff_new_file_color();

@@ -124,7 +124,13 @@ pub fn walk_git_log_windowed(root: &Path, window: DiffWindow) -> Result<DiffWalk
         DiffWindow::SinceLastTag => {
             match find_last_tag_epoch(&repo) {
                 Ok(epoch) => Some(epoch),
-                Err(_) => Some(0), // no tags → walk entire history
+                Err(_) => {
+                    // No tags found — return empty result instead of walking entire history
+                    return Ok(DiffWalkResult {
+                        records: Vec::new(),
+                        new_file_paths: std::collections::HashSet::new(),
+                    });
+                }
             }
         }
     };
@@ -136,6 +142,7 @@ pub fn walk_git_log_windowed(root: &Path, window: DiffWindow) -> Result<DiffWalk
     let mut records = Vec::new();
     let mut new_file_paths = HashSet::new();
     let mut commit_count = 0u32;
+    let prefix_sep = if prefix.is_empty() { String::new() } else { format!("{prefix}/") };
 
     'outer: for oid_result in revwalk {
         let oid = match oid_result {
@@ -194,9 +201,9 @@ pub fn walk_git_log_windowed(root: &Path, window: DiffWindow) -> Result<DiffWalk
                 Some(p) => p,
                 None => continue,
             };
-            let rel_path = if prefix.is_empty() {
+            let rel_path = if prefix_sep.is_empty() {
                 path
-            } else if let Some(stripped) = path.strip_prefix(&format!("{prefix}/")) {
+            } else if let Some(stripped) = path.strip_prefix(&prefix_sep) {
                 stripped.to_string()
             } else {
                 continue

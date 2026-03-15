@@ -188,6 +188,7 @@ fn draw_visual_group(ui: &mut egui::Ui, state: &mut AppState, visual_changed: &m
         && prev_color_mode != ColorMode::GitDiff
         && state.git_diff_report.is_none()
         && !state.git_diff_running
+        && !state.scanning
     {
         state.git_diff_requested = true;
     }

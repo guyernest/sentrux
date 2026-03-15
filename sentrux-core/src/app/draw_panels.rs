@@ -101,7 +101,10 @@ fn maybe_spawn_git_diff_thread(app: &mut SentruxApp) {
     match std::thread::Builder::new()
         .name("git-diff".into())
         .spawn(move || {
-            crate::analysis::git_diff_adapter::spawn_git_diff_thread(root, window, msg_tx);
+            match crate::analysis::git_diff_adapter::compute_git_diff_report(&root, window) {
+                Ok(report) => { let _ = msg_tx.send(crate::app::channels::ScanMsg::GitDiffReady(report)); }
+                Err(e) => { let _ = msg_tx.send(crate::app::channels::ScanMsg::GitDiffError(e)); }
+            }
         })
     {
         Ok(_) => {}
@@ -199,7 +202,7 @@ fn draw_gradient_strip(ui: &mut egui::Ui, color_a: egui::Color32, color_b: egui:
 /// Color legend for GitDiff mode.
 fn draw_git_diff_legend(ui: &mut egui::Ui, has_report: bool) {
     use crate::renderer::colors::{git_diff_intensity_color, git_diff_new_file_color};
-    draw_swatch(ui, egui::Color32::from_rgb(50, 52, 55));
+    draw_swatch(ui, crate::renderer::colors::NO_DATA_GRAY);
     ui.add_space(2.0);
     ui.label(egui::RichText::new("unchanged").small().weak());
     ui.add_space(8.0);
@@ -236,7 +239,7 @@ fn draw_coverage_legend(ui: &mut egui::Ui) {
     ui.add_space(2.0);
     ui.label(egui::RichText::new("well-covered \u{2192} uncovered").small().weak());
     ui.add_space(8.0);
-    draw_swatch(ui, egui::Color32::from_rgb(50, 52, 55));
+    draw_swatch(ui, crate::renderer::colors::NO_DATA_GRAY);
     ui.add_space(2.0);
     ui.label(egui::RichText::new("no data").small().weak());
 }
