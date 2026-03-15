@@ -103,14 +103,14 @@ impl SentruxApp {
         self.state.pmat_report = reports.pmat;
         self.state.graph_metrics_report = reports.graph_metrics;
         self.state.clippy_report = reports.clippy;
-        // Recompute max risk normalization
+        // Reset coverage on new scan — old coverage data is stale
+        self.state.coverage_report = None;
+        // Recompute max risk normalization (after coverage reset — no stale data)
         self.state.max_risk_raw = crate::renderer::rects::compute_max_risk_raw(
             self.state.graph_metrics_report.as_ref(),
             self.state.coverage_report.as_ref(),
             self.state.clippy_report.as_ref(),
         );
-        // Reset coverage on new scan — old coverage data is stale
-        self.state.coverage_report = None;
         self.state.coverage_running = false;
         self.state.community_highlight = None;
         self.state.snapshot = Some(snap);
@@ -390,26 +390,11 @@ impl SentruxApp {
         match self.state.size_mode {
             SizeMode::PageRank => {
                 let gm = self.state.graph_metrics_report.as_ref()?;
-                let mut map = std::collections::HashMap::new();
-                // Graph-metrics uses bare filenames; expand to all matching snapshot paths
-                for (path, _) in &self.state.file_index {
-                    let basename = path.rsplit('/').next().unwrap_or(path);
-                    if let Some(&idx) = gm.by_filename.get(basename) {
-                        map.insert(path.clone(), gm.data.nodes[idx].pagerank);
-                    }
-                }
-                Some(map)
+                Some(Self::build_gm_weights(&self.state.file_index, gm, |n| n.pagerank))
             }
             SizeMode::Centrality => {
                 let gm = self.state.graph_metrics_report.as_ref()?;
-                let mut map = std::collections::HashMap::new();
-                for (path, _) in &self.state.file_index {
-                    let basename = path.rsplit('/').next().unwrap_or(path);
-                    if let Some(&idx) = gm.by_filename.get(basename) {
-                        map.insert(path.clone(), gm.data.nodes[idx].degree_centrality);
-                    }
-                }
-                Some(map)
+                Some(Self::build_gm_weights(&self.state.file_index, gm, |n| n.degree_centrality))
             }
             SizeMode::ClippyCount => {
                 let clippy = self.state.clippy_report.as_ref()?;
@@ -421,6 +406,22 @@ impl SentruxApp {
             }
             _ => None,
         }
+    }
+
+    /// Build per-file weights from a graph-metrics report, expanding basenames to full paths.
+    fn build_gm_weights(
+        file_index: &std::collections::HashMap<String, crate::core::types::FileIndexEntry>,
+        gm: &crate::core::pmat_types::GraphMetricsReport,
+        extract: impl Fn(&crate::core::pmat_types::GraphMetricsNode) -> f64,
+    ) -> std::collections::HashMap<String, f64> {
+        let mut map = std::collections::HashMap::new();
+        for (path, _) in file_index {
+            let basename = path.rsplit('/').next().unwrap_or(path);
+            if let Some(&idx) = gm.by_filename.get(basename) {
+                map.insert(path.clone(), extract(&gm.data.nodes[idx]));
+            }
+        }
+        map
     }
 
     /// Send a layout request to the background layout thread.

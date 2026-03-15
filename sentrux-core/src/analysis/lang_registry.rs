@@ -3,98 +3,90 @@
 //! Static registry with compiled-in Rust, TypeScript, and JavaScript grammars.
 //! All other file types are silently skipped (get_grammar_and_query returns None).
 
+use std::collections::HashMap;
 use std::sync::LazyLock;
 use tree_sitter::{Language, Query};
 
+/// Sentinel value returned by `detect_lang_from_ext` for unrecognized extensions.
+pub const LANG_UNKNOWN: &str = "unknown";
+
 /// Configuration for a compiled-in language.
 pub struct LangConfig {
-    /// Language name (owned)
-    pub name: String,
+    /// Language name
+    pub name: &'static str,
     /// Compiled tree-sitter grammar
     pub grammar: Language,
     /// Compiled tree-sitter query for structural extraction
     pub query: Query,
-    /// File extensions (owned)
-    pub extensions: Vec<String>,
+    /// File extensions (without dot)
+    pub extensions: &'static [&'static str],
 }
 
 /// Static 3-language registry with compiled-in grammars.
 pub struct LangRegistry {
     configs: Vec<LangConfig>,
+    ext_map: HashMap<&'static str, usize>,
+}
+
+macro_rules! register_lang {
+    ($configs:expr, $ext_map:expr, $grammar:expr, $query_src:expr, $name:expr, $exts:expr) => {{
+        let grammar = Language::new($grammar);
+        let query = Query::new(&grammar, $query_src)
+            .expect(concat!("Failed to compile ", $name, " tags query"));
+        let idx = $configs.len();
+        $configs.push(LangConfig {
+            name: $name,
+            grammar,
+            query,
+            extensions: $exts,
+        });
+        for ext in $exts {
+            $ext_map.insert(*ext, idx);
+        }
+    }};
 }
 
 impl LangRegistry {
     fn init() -> Self {
         let mut configs = Vec::new();
+        let mut ext_map = HashMap::new();
 
-        // Rust
-        {
-            let grammar = Language::new(tree_sitter_rust::LANGUAGE);
-            let source = include_str!("../queries/rust/tags.scm");
-            let query = Query::new(&grammar, source)
-                .expect("Failed to compile Rust tags query");
-            configs.push(LangConfig {
-                name: "rust".into(),
-                grammar,
-                query,
-                extensions: vec!["rs".into()],
-            });
-        }
+        register_lang!(configs, ext_map,
+            tree_sitter_rust::LANGUAGE,
+            include_str!("../queries/rust/tags.scm"),
+            "rust", &["rs"]);
 
-        // TypeScript (.ts and .tsx both use the TypeScript grammar)
-        {
-            let grammar = Language::new(tree_sitter_typescript::LANGUAGE_TYPESCRIPT);
-            let source = include_str!("../queries/typescript/tags.scm");
-            let query = Query::new(&grammar, source)
-                .expect("Failed to compile TypeScript tags query");
-            configs.push(LangConfig {
-                name: "typescript".into(),
-                grammar,
-                query,
-                extensions: vec!["ts".into(), "tsx".into()],
-            });
-        }
+        register_lang!(configs, ext_map,
+            tree_sitter_typescript::LANGUAGE_TYPESCRIPT,
+            include_str!("../queries/typescript/tags.scm"),
+            "typescript", &["ts", "tsx"]);
 
-        // JavaScript (.js, .jsx, .mjs, .cjs)
-        {
-            let grammar = Language::new(tree_sitter_javascript::LANGUAGE);
-            let source = include_str!("../queries/javascript/tags.scm");
-            let query = Query::new(&grammar, source)
-                .expect("Failed to compile JavaScript tags query");
-            configs.push(LangConfig {
-                name: "javascript".into(),
-                grammar,
-                query,
-                extensions: vec!["js".into(), "jsx".into(), "mjs".into(), "cjs".into()],
-            });
-        }
+        register_lang!(configs, ext_map,
+            tree_sitter_javascript::LANGUAGE,
+            include_str!("../queries/javascript/tags.scm"),
+            "javascript", &["js", "jsx", "mjs", "cjs"]);
 
-        LangRegistry { configs }
-    }
-
-    /// Look up by language name.
-    pub fn get(&self, name: &str) -> Option<&LangConfig> {
-        self.configs.iter().find(|c| c.name == name)
+        LangRegistry { configs, ext_map }
     }
 
     /// Look up by file extension (without dot).
     pub fn get_by_ext(&self, ext: &str) -> Option<&LangConfig> {
-        self.configs.iter().find(|c| c.extensions.iter().any(|e| e == ext))
+        self.ext_map.get(ext).map(|&idx| &self.configs[idx])
+    }
+
+    /// Look up by language name.
+    fn get_by_name(&self, name: &str) -> Option<&LangConfig> {
+        self.configs.iter().find(|c| c.name == name)
     }
 
     /// All registered file extensions.
     pub fn all_extensions(&self) -> Vec<&str> {
-        self.configs.iter().flat_map(|c| c.extensions.iter().map(|e| e.as_str())).collect()
+        self.ext_map.keys().copied().collect()
     }
 
     /// Number of loaded languages.
     pub fn count(&self) -> usize {
         self.configs.len()
-    }
-
-    /// Failed plugin descriptions (empty — no plugin system).
-    pub fn failed(&self) -> &[String] {
-        &[]
     }
 }
 
@@ -104,14 +96,9 @@ static REGISTRY: LazyLock<LangRegistry> = LazyLock::new(LangRegistry::init);
 
 // ── Public free functions delegating to global singleton ──
 
-/// Get language config by name.
-pub fn get(name: &str) -> Option<&'static LangConfig> {
-    REGISTRY.get(name)
-}
-
 /// Get grammar + query for a language name.
 pub fn get_grammar_and_query(name: &str) -> Option<(&'static Language, &'static Query)> {
-    REGISTRY.get(name).map(|c| (&c.grammar, &c.query))
+    REGISTRY.get_by_name(name).map(|c| (&c.grammar, &c.query))
 }
 
 /// All registered extensions.
@@ -120,7 +107,7 @@ pub fn all_extensions() -> Vec<&'static str> {
 }
 
 /// Number of loaded language configs.
-pub fn plugin_count() -> usize {
+pub fn lang_count() -> usize {
     REGISTRY.count()
 }
 
@@ -128,26 +115,26 @@ pub fn plugin_count() -> usize {
 ///
 /// Returns the language name for parseable types (rust, typescript, javascript),
 /// or a display-only name for known-but-unparseable types (json, toml, etc.),
-/// or "unknown" for unrecognized extensions.
-pub fn detect_lang_from_ext(ext: &str) -> String {
+/// or `LANG_UNKNOWN` for unrecognized extensions.
+pub fn detect_lang_from_ext(ext: &str) -> &'static str {
     if let Some(config) = REGISTRY.get_by_ext(ext) {
-        return config.name.clone();
+        return config.name;
     }
     // Fallback: languages we recognize for display but don't parse structurally
     match ext {
-        "json" => "json".into(),
-        "toml" => "toml".into(),
-        "yaml" | "yml" => "yaml".into(),
-        "md" => "markdown".into(),
-        "sql" => "sql".into(),
-        "dart" => "dart".into(),
-        "xml" => "xml".into(),
-        "vue" => "vue".into(),
-        "svelte" => "svelte".into(),
-        "pl" | "pm" => "perl".into(),
-        "sass" => "sass".into(),
-        "gd" => "gdscript".into(),
-        _ => "unknown".into(),
+        "json" => "json",
+        "toml" => "toml",
+        "yaml" | "yml" => "yaml",
+        "md" => "markdown",
+        "sql" => "sql",
+        "dart" => "dart",
+        "xml" => "xml",
+        "vue" => "vue",
+        "svelte" => "svelte",
+        "pl" | "pm" => "perl",
+        "sass" => "sass",
+        "gd" => "gdscript",
+        _ => LANG_UNKNOWN,
     }
 }
 
@@ -165,11 +152,6 @@ pub fn detect_lang_from_filename(filename: &str) -> Option<&'static str> {
     }
 }
 
-/// Failed plugin descriptions.
-pub fn failed_plugins() -> &'static [String] {
-    REGISTRY.failed()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,7 +160,7 @@ mod tests {
     fn test_detect_lang_from_ext_fallbacks() {
         assert_eq!(detect_lang_from_ext("json"), "json");
         assert_eq!(detect_lang_from_ext("toml"), "toml");
-        assert_eq!(detect_lang_from_ext("xyz"), "unknown");
+        assert_eq!(detect_lang_from_ext("xyz"), LANG_UNKNOWN);
     }
 
     #[test]
@@ -192,8 +174,6 @@ mod tests {
     fn test_registry_loads() {
         let _ = &*REGISTRY;
     }
-
-    // --- New tests for static grammar registry (Plan 02) ---
 
     #[test]
     fn test_get_grammar_and_query_rust() {
@@ -257,11 +237,11 @@ mod tests {
 
     #[test]
     fn test_detect_lang_from_ext_py_unknown() {
-        assert_eq!(detect_lang_from_ext("py"), "unknown");
+        assert_eq!(detect_lang_from_ext("py"), LANG_UNKNOWN);
     }
 
     #[test]
     fn test_detect_lang_from_ext_go_unknown() {
-        assert_eq!(detect_lang_from_ext("go"), "unknown");
+        assert_eq!(detect_lang_from_ext("go"), LANG_UNKNOWN);
     }
 }

@@ -225,17 +225,7 @@ pub fn run_clippy_warnings(root: &str) -> Option<ClippyReport> {
             *entry.by_category.entry(lint_category(&lint_id).to_string()).or_insert(0) += 1;
         }
     }
-    // Build basename index for cross-index joins with graph-metrics
-    let mut by_basename: HashMap<String, FileClippyData> = HashMap::new();
-    for (path, data) in &by_file {
-        if let Some(base) = path.rsplit('/').next() {
-            by_basename.entry(base.to_string()).or_default().total += data.total;
-            for (cat, count) in &data.by_category {
-                *by_basename.entry(base.to_string()).or_default().by_category.entry(cat.clone()).or_insert(0) += count;
-            }
-        }
-    }
-    Some(ClippyReport { by_file, by_basename })
+    Some(ClippyReport::from_by_file(by_file))
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────

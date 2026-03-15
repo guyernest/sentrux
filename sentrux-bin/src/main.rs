@@ -4,7 +4,7 @@
 //! that wires together the three modes:
 //! - GUI mode (default): interactive treemap/blueprint visualizer
 //! - Check mode (`sentrux check [path]`): delegates to `pmat quality-gate`
-//! - Gate mode (`sentrux gate [--save] [path]`): delegates to `pmat tdg --min-grade`
+//! - Gate mode (`sentrux gate [path]`): delegates to `pmat tdg --min-grade`
 
 use clap::{Parser, Subcommand};
 use sentrux_core::app;
@@ -49,10 +49,6 @@ enum Command {
 
     /// Run PMAT TDG grade gate on the project (delegates to `pmat tdg --min-grade`)
     Gate {
-        /// Note: --save is not supported with PMAT gate. Use `pmat config` to set grade thresholds.
-        #[arg(long)]
-        save: bool,
-
         /// Directory to gate
         #[arg(default_value = ".")]
         path: String,
@@ -79,8 +75,8 @@ fn main() -> eframe::Result<()> {
         Some(Command::Check { path }) => {
             std::process::exit(run_check(&path));
         }
-        Some(Command::Gate { save, path }) => {
-            std::process::exit(run_gate(&path, save));
+        Some(Command::Gate { path }) => {
+            std::process::exit(run_gate(&path));
         }
         Some(Command::Scan { path }) => {
             run_gui(path)
@@ -127,11 +123,7 @@ fn run_check(path: &str) -> i32 {
 // ---------------------------------------------------------------------------
 
 /// Run PMAT TDG grade gate from CLI. Returns exit code.
-fn run_gate(path: &str, save_mode: bool) -> i32 {
-    if save_mode {
-        eprintln!("[gate] Note: --save is not supported with PMAT gate. Use `pmat config` to set grade thresholds.");
-    }
-
+fn run_gate(path: &str) -> i32 {
     eprintln!("[gate] Running PMAT TDG grade gate on {path}");
 
     // Default minimum grade: C (configurable in future)

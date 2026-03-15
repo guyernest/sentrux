@@ -285,8 +285,25 @@ pub struct FileClippyData {
 pub struct ClippyReport {
     /// scan-root-relative path → per-file warning data
     pub by_file: HashMap<String, FileClippyData>,
-    /// bare filename → per-file warning data (for cross-index joins with graph-metrics)
+    /// bare filename → aggregated warning data (for cross-index joins with graph-metrics)
     pub by_basename: HashMap<String, FileClippyData>,
+}
+
+impl ClippyReport {
+    /// Build a `ClippyReport` from a per-file map, constructing the basename index.
+    pub fn from_by_file(by_file: HashMap<String, FileClippyData>) -> Self {
+        let mut by_basename: HashMap<String, FileClippyData> = HashMap::new();
+        for (path, data) in &by_file {
+            if let Some(base) = path.rsplit('/').next() {
+                let entry = by_basename.entry(base.to_string()).or_default();
+                entry.total += data.total;
+                for (cat, count) in &data.by_category {
+                    *entry.by_category.entry(cat.clone()).or_insert(0) += count;
+                }
+            }
+        }
+        ClippyReport { by_file, by_basename }
+    }
 }
 
 /// Map a clippy lint ID to a semantic category.
@@ -628,17 +645,7 @@ mod tests {
                 *entry.by_category.entry(lint_category(&lint_id).to_string()).or_insert(0) += 1;
             }
         }
-        let mut by_basename: HashMap<String, FileClippyData> = HashMap::new();
-        for (path, data) in &by_file {
-            if let Some(base) = path.rsplit('/').next() {
-                let entry = by_basename.entry(base.to_string()).or_default();
-                entry.total += data.total;
-                for (cat, count) in &data.by_category {
-                    *entry.by_category.entry(cat.clone()).or_insert(0) += count;
-                }
-            }
-        }
-        ClippyReport { by_file, by_basename }
+        ClippyReport::from_by_file(by_file)
     }
 
     #[test]

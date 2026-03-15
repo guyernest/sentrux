@@ -161,7 +161,7 @@ pub fn check_for_updates_async(current_version: &str) {
 fn check_and_notify(current_version: &str) {
     let new = if is_new_user() { "1" } else { "0" };
     let mode = detect_mode();
-    let plugins = crate::analysis::lang_registry::plugin_count();
+    let langs = crate::analysis::lang_registry::lang_count();
     let tier = crate::license::current_tier();
     let scans = SCANS.load(Ordering::Relaxed);
     let mcp = MCP_CALLS.load(Ordering::Relaxed);
@@ -173,7 +173,7 @@ fn check_and_notify(current_version: &str) {
         platform_id(),
         new,           // new user
         mode,          // gui/mcp/cli/plugin
-        plugins,       // loaded plugin count
+        langs,         // loaded language count
         tier,          // Free/Pro/Team
         scans,         // scans since last ping
         mcp,           // MCP calls since last ping

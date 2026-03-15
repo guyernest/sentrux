@@ -127,7 +127,7 @@ fn is_main_entry_by_name(file: &FileNode) -> bool {
         // to update this function.
         if let Some(ext) = name_lower.strip_prefix("main.") {
             let detected = lang_registry::detect_lang_from_ext(ext);
-            return detected != "unknown" && can_have_entry_points(&detected);
+            return detected != lang_registry::LANG_UNKNOWN && can_have_entry_points(detected);
         }
         return false;
     }

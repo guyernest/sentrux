@@ -116,13 +116,22 @@ pub fn get_size_weight(
                 .unwrap_or(0.0);
             (h * 100.0 + 1.0).max(1.0)
         }
-        SizeMode::PageRank | SizeMode::Centrality | SizeMode::ClippyCount => {
-            // External analysis-backed weights, pre-built from reports
+        SizeMode::PageRank | SizeMode::Centrality => {
+            // PageRank/centrality values are ~0.01-0.1; scale up for visible treemap area
+            const GRAPH_METRIC_SCALE: f64 = 1000.0;
             external_weights
                 .and_then(|m| m.get(&node.path))
                 .copied()
-                .map(|v| (v * 1000.0 + 1.0).max(1.0)) // Scale up small values (PageRank ~0.01)
-                .unwrap_or(1.0) // Files without data get uniform size
+                .map(|v| (v * GRAPH_METRIC_SCALE + 1.0).max(1.0))
+                .unwrap_or(1.0)
+        }
+        SizeMode::ClippyCount => {
+            // Clippy counts are already integers (0-50+); no scaling needed
+            external_weights
+                .and_then(|m| m.get(&node.path))
+                .copied()
+                .map(|v| (v + 1.0).max(1.0))
+                .unwrap_or(1.0)
         }
         SizeMode::Uniform => 1.0,
     }

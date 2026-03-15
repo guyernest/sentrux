@@ -45,8 +45,8 @@ pub(crate) fn detect_lang(path: &Path) -> String {
         }
     }
     match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) => crate::analysis::lang_registry::detect_lang_from_ext(ext),
-        None => "unknown".into(),
+        Some(ext) => crate::analysis::lang_registry::detect_lang_from_ext(ext).to_string(),
+        None => crate::analysis::lang_registry::LANG_UNKNOWN.to_string(),
     }
 }
 
