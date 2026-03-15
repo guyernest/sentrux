@@ -13,8 +13,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PMAT-02**: PMAT TDG grades (A+ through F) are computed for scanned projects
 - [x] **PMAT-03**: TDG grade badges are displayed on treemap file/directory nodes
 - [x] **PMAT-04**: TDG grade color mode colors treemap nodes by grade (green A+ → red F gradient)
-- [ ] **PMAT-05**: PMAT health score is displayed in a dedicated GUI panel
-- [ ] **PMAT-06**: PMAT mutation testing results are accessible through a GUI panel
+- [x] **PMAT-05**: PMAT health score is displayed in a dedicated GUI panel
+- [x] **PMAT-06**: PMAT mutation testing results are accessible through a GUI panel
 - [ ] **PMAT-07**: Sentrux's own grading/rating system is removed and replaced by PMAT metrics
 
 ### Overlay System
@@ -84,8 +84,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PMAT-02 | Phase 2 | Complete |
 | PMAT-03 | Phase 2 | Complete |
 | PMAT-04 | Phase 2 | Complete |
-| PMAT-05 | Phase 2 | Pending |
-| PMAT-06 | Phase 2 | Pending |
+| PMAT-05 | Phase 2 | Complete |
+| PMAT-06 | Phase 2 | Complete |
 | PMAT-07 | Phase 2 | Pending |
 | OVRL-01 | Phase 3 | Pending |
 | OVRL-02 | Phase 3 | Pending |

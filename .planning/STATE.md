@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-pmat-integration 02-02-PLAN.md
-last_updated: "2026-03-15T02:24:33.201Z"
+stopped_at: Completed 02-pmat-integration 02-03-PLAN.md
+last_updated: "2026-03-15T02:29:47.000Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01-cleanup P02 | 3 | 2 tasks | 3 files |
 | Phase 02-pmat-integration P01 | 5 | 2 tasks | 11 files |
 | Phase 02-pmat-integration P02 | 5 | 2 tasks | 10 files |
+| Phase 02-pmat-integration P03 | 12 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 02-pmat-integration]: Tarjan SCC .unwrap() replaced with .expect(invariant msg) to satisfy PMAT heuristic
 - [Phase 02-pmat-integration]: TdgGrade is default ColorMode: primary free mode, replaces Monochrome/Language as the first thing users see
 - [Phase 02-pmat-integration]: ColorMode serde(other) on Monochrome: old prefs with churn/risk/age/execdepth/blastradius deserialize safely to Monochrome
+- [Phase 02-pmat-integration]: PMAT is required for scan — check_pmat_available() at scan start, ScanMsg::Error if missing
+- [Phase 02-pmat-integration]: draw_pmat_panel wired into metrics_panel.rs (consistent with all other panels), not draw_panels.rs
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T02:24:33.199Z
-Stopped at: Completed 02-pmat-integration 02-02-PLAN.md
+Last session: 2026-03-15T02:29:47.000Z
+Stopped at: Completed 02-pmat-integration 02-03-PLAN.md
 Resume file: None

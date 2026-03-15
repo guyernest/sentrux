@@ -44,12 +44,12 @@ Plans:
   3. The health panel shows PMAT's health score for the scanned project
   4. The file detail panel shows TDG component breakdown (scores, penalties, critical defects) when a file is selected
   5. No sentrux-internal grading or rating code remains in the compiled binary (old `metrics/grading`, `metrics/stability`, `metrics/whatif` subtrees deleted)
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
-- [ ] 02-01-PLAN.md — PMAT types, subprocess adapter, and .unwrap() cleanup
-- [ ] 02-02-PLAN.md — ColorMode pruning, TDG grade coloring, and badge rendering
-- [ ] 02-03-PLAN.md — PMAT scan pipeline wiring and health/file-detail panels
+- [x] 02-01-PLAN.md — PMAT types, subprocess adapter, and .unwrap() cleanup
+- [x] 02-02-PLAN.md — ColorMode pruning, TDG grade coloring, and badge rendering
+- [x] 02-03-PLAN.md — PMAT scan pipeline wiring and health/file-detail panels
 - [ ] 02-04-PLAN.md — Delete old metrics engine and rewire check/gate CLI to PMAT
 
 ### Phase 3: Git Diff Overlay
@@ -83,6 +83,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
-| 2. PMAT Integration | 2/4 | In Progress|  |
+| 2. PMAT Integration | 3/4 | In Progress|  |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
