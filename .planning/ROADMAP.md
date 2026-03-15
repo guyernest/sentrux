@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Cleanup** - Remove MCP server, plugin system, and non-Rust/TS/JS language support (completed 2026-03-15)
 - [x] **Phase 2: PMAT Integration** - Integrate PMAT as analysis engine; display TDG grades and health/mutation panels (completed 2026-03-15)
-- [ ] **Phase 3: Git Diff Overlay** - Color-code treemap nodes by git change recency with selectable time windows
+- [x] **Phase 3: Git Diff Overlay** - Color-code treemap nodes by git change recency with selectable time windows (completed 2026-03-15)
 - [ ] **Phase 4: GSD Phase Overlay** - Color-code treemap nodes by GSD planning phase; complete triple overlay system
 
 ## Phase Details
@@ -80,7 +80,7 @@ Plans:
   3. The time window selector in the toolbar offers at minimum 15 min, 1 h, 1 day, and 1 week; changing the window updates the overlay without freezing the UI
   4. A color legend below the toolbar explains the current overlay's color mapping
   5. The selected overlay mode is restored when the app is reopened
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 03-01-PLAN.md — Types, git walker extension, color functions, and ColorMode::GitDiff variant
@@ -108,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
 | 2. PMAT Integration | 3/4 | Complete    | 2026-03-15 |
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
-| 3. Git Diff Overlay | 2/3 | In Progress|  |
+| 3. Git Diff Overlay | 3/3 | Complete   | 2026-03-15 |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |

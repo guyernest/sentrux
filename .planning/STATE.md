@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-git-diff-overlay 03-02-PLAN.md
-last_updated: "2026-03-15T14:29:50.020Z"
+stopped_at: Completed 03-git-diff-overlay 03-03-PLAN.md
+last_updated: "2026-03-15T15:40:01.261Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
 ---
 
@@ -61,6 +61,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02.1-rust-deep-analysis P03 | 90 | 2 tasks | 12 files |
 | Phase 03-git-diff-overlay P01 | 7 | 2 tasks | 10 files |
 | Phase 03-git-diff-overlay P02 | 4 | 2 tasks | 6 files |
+| Phase 03-git-diff-overlay P03 | 50 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,10 @@ Recent decisions affecting current work:
 - [Phase 03-git-diff-overlay]: muted gray (50,52,55) for files not in git diff report: distinguishes unchanged-in-window from no-data (GDIT-04)
 - [Phase 03-git-diff-overlay]: git_diff_window and git_diff_custom_n not reset on new scan — user selections survive project changes
 - [Phase 03-git-diff-overlay]: draw_git_diff_section only shown when color_mode == ColorMode::GitDiff to avoid noise in other modes
+- [Phase 03-git-diff-overlay]: Color legend placed below toolbar as second row in TopBottomPanel — avoids modifying canvas/panel layout code
+- [Phase 03-git-diff-overlay]: Auto-trigger guards !state.scanning to prevent triggering git diff walk during a full scan
+- [Phase 03-git-diff-overlay]: NO_DATA_GRAY constant extracted to colors.rs (was magic literal duplicated in 3 files)
+- [Phase 03-git-diff-overlay]: SinceLastTag with no tags returns empty report instead of unbounded walk — prevents freeze on fresh repos
 
 ### Pending Todos
 
@@ -116,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T14:29:50.018Z
-Stopped at: Completed 03-git-diff-overlay 03-02-PLAN.md
+Last session: 2026-03-15T15:40:01.259Z
+Stopped at: Completed 03-git-diff-overlay 03-03-PLAN.md
 Resume file: None
