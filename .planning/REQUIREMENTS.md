@@ -15,7 +15,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PMAT-04**: TDG grade color mode colors treemap nodes by grade (green A+ → red F gradient)
 - [x] **PMAT-05**: PMAT health score is displayed in a dedicated GUI panel
 - [x] **PMAT-06**: PMAT mutation testing results are accessible through a GUI panel
-- [ ] **PMAT-07**: Sentrux's own grading/rating system is removed and replaced by PMAT metrics
+- [x] **PMAT-07**: Sentrux's own grading/rating system is removed and replaced by PMAT metrics
 
 ### Overlay System
 
@@ -44,7 +44,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **CLEN-01**: MCP server mode is removed from sentrux (PMAT provides MCP)
 - [x] **CLEN-02**: Plugin system (runtime tree-sitter grammar loading) is removed
 - [x] **CLEN-03**: Language support is narrowed to Rust, TypeScript, and JavaScript only
-- [ ] **CLEN-04**: Unused analysis code (sentrux's own metrics engine) is removed after PMAT replaces it
+- [x] **CLEN-04**: Unused analysis code (sentrux's own metrics engine) is removed after PMAT replaces it
 
 ## v2 Requirements
 
@@ -86,7 +86,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PMAT-04 | Phase 2 | Complete |
 | PMAT-05 | Phase 2 | Complete |
 | PMAT-06 | Phase 2 | Complete |
-| PMAT-07 | Phase 2 | Pending |
+| PMAT-07 | Phase 2 | Complete |
 | OVRL-01 | Phase 3 | Pending |
 | OVRL-02 | Phase 3 | Pending |
 | OVRL-03 | Phase 3 | Pending |
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLEN-01 | Phase 1 | Complete |
 | CLEN-02 | Phase 1 | Complete |
 | CLEN-03 | Phase 1 | Complete |
-| CLEN-04 | Phase 2 | Pending |
+| CLEN-04 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 24 total
