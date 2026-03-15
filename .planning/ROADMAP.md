@@ -115,3 +115,13 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
 | 3. Git Diff Overlay | 3/3 | Complete    | 2026-03-15 |
 | 4. GSD Phase Overlay | 2/3 | In Progress|  |
+
+### Phase 5: Improve Time Alignment
+
+**Goal:** Align three temporal streams (wall-clock time, git commits, GSD milestones/phases) into a hierarchical navigation bar — milestones → phases → commits — with time ticks above, click-to-zoom filtering, and diff-over-time analysis showing how file scores and metrics changed between any selected point and the present
+**Requirements**: TBD
+**Depends on:** Phase 4
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 5 to break down)

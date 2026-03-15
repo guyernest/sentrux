@@ -72,6 +72,7 @@ Progress: [█████░░░░░] 50%
 ### Roadmap Evolution
 
 - Phase 02.1 inserted after Phase 2: Rust Deep Analysis (INSERTED) — integrate PMAT code rank, test coverage (cargo-llvm-cov), and clippy advanced linting into treemap visualization
+- Phase 5 added: Improve Time Alignment — multi-scale timeline navigation (time/commits/phases/milestones), diff-over-time analysis, and project health tracking
 
 ### Decisions
 
