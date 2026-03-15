@@ -12,6 +12,7 @@ use super::arch_display::draw_arch_section;
 use super::evolution_display::draw_evolution_section;
 use super::testgap_display::draw_testgap_section;
 use super::rules_display::draw_rules_section;
+use super::pmat_panel::draw_pmat_panel;
 use crate::core::settings::ThemeConfig;
 
 /// Draw the metrics panel (left side) showing all analysis results.
@@ -81,6 +82,10 @@ fn draw_metrics_sections(ui: &mut egui::Ui, state: &mut AppState, tc: &ThemeConf
         draw_rules_section(ui, rules, tc);
         draw_sep(ui, tc, 4.0);
     }
+
+    // PMAT TDG health summary and file-level breakdown (when pmat_report is available)
+    draw_pmat_panel(ui, state);
+    draw_sep(ui, tc, 4.0);
 
     if state.health_report.is_none() && state.arch_report.is_none() {
         ui.add_space(16.0);
