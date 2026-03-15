@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 use tree_sitter::{Language, Query};
 
 /// Configuration for a compiled-in language.
-pub struct PluginLangConfig {
+pub struct LangConfig {
     /// Language name (owned)
     pub name: String,
     /// Compiled tree-sitter grammar
@@ -20,7 +20,7 @@ pub struct PluginLangConfig {
 
 /// Static 3-language registry with compiled-in grammars.
 pub struct LangRegistry {
-    configs: Vec<PluginLangConfig>,
+    configs: Vec<LangConfig>,
 }
 
 impl LangRegistry {
@@ -33,7 +33,7 @@ impl LangRegistry {
             let source = include_str!("../queries/rust/tags.scm");
             let query = Query::new(&grammar, source)
                 .expect("Failed to compile Rust tags query");
-            configs.push(PluginLangConfig {
+            configs.push(LangConfig {
                 name: "rust".into(),
                 grammar,
                 query,
@@ -47,7 +47,7 @@ impl LangRegistry {
             let source = include_str!("../queries/typescript/tags.scm");
             let query = Query::new(&grammar, source)
                 .expect("Failed to compile TypeScript tags query");
-            configs.push(PluginLangConfig {
+            configs.push(LangConfig {
                 name: "typescript".into(),
                 grammar,
                 query,
@@ -61,7 +61,7 @@ impl LangRegistry {
             let source = include_str!("../queries/javascript/tags.scm");
             let query = Query::new(&grammar, source)
                 .expect("Failed to compile JavaScript tags query");
-            configs.push(PluginLangConfig {
+            configs.push(LangConfig {
                 name: "javascript".into(),
                 grammar,
                 query,
@@ -73,12 +73,12 @@ impl LangRegistry {
     }
 
     /// Look up by language name.
-    pub fn get(&self, name: &str) -> Option<&PluginLangConfig> {
+    pub fn get(&self, name: &str) -> Option<&LangConfig> {
         self.configs.iter().find(|c| c.name == name)
     }
 
     /// Look up by file extension (without dot).
-    pub fn get_by_ext(&self, ext: &str) -> Option<&PluginLangConfig> {
+    pub fn get_by_ext(&self, ext: &str) -> Option<&LangConfig> {
         self.configs.iter().find(|c| c.extensions.iter().any(|e| e == ext))
     }
 
@@ -105,7 +105,7 @@ static REGISTRY: LazyLock<LangRegistry> = LazyLock::new(LangRegistry::init);
 // ── Public free functions delegating to global singleton ──
 
 /// Get language config by name.
-pub fn get(name: &str) -> Option<&'static PluginLangConfig> {
+pub fn get(name: &str) -> Option<&'static LangConfig> {
     REGISTRY.get(name)
 }
 
