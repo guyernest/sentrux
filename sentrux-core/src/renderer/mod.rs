@@ -112,6 +112,8 @@ pub fn render_frame(
     // Badges on top of everything
     if lod_full {
         badges::draw_badges(painter, clip_rect, rd, ctx);
+        // TDG grade badges — only when ColorMode::TdgGrade and pmat_report is set
+        badges::draw_tdg_badges(painter, clip_rect, rd, ctx);
     }
 
     // Minimap always visible — keeps orientation during pan/zoom
