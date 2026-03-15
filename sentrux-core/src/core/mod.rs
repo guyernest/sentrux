@@ -7,6 +7,7 @@
 
 pub mod heat;
 pub mod path_utils;
+pub mod pmat_types;
 pub mod settings;
 pub mod snapshot;
 pub mod types;
