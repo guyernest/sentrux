@@ -63,7 +63,7 @@ Plans:
   3. Test coverage percentages from cargo-llvm-cov are shown per-file in the detail panel
   4. A new ColorMode variant shows files colored by test coverage (green = well-covered, red = uncovered)
   5. Clippy warnings (pedantic/nursery categories) are counted per-file and shown in the detail panel
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 02.1-01-PLAN.md — Types, subprocess adapters, color functions, and ColorMode variants for graph-metrics, coverage, and clippy

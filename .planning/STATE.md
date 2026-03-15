@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02.1-01-PLAN.md
-last_updated: "2026-03-15T04:54:36.060Z"
+stopped_at: Completed 02.1-02-PLAN.md
+last_updated: "2026-03-15T05:00:27.033Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 50
 ---
 
@@ -57,6 +57,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02-pmat-integration P03 | 12 | 2 tasks | 8 files |
 | Phase 02-pmat-integration P04 | 18 | 2 tasks | 35 files |
 | Phase 02.1-rust-deep-analysis P01 | 4 | 2 tasks | 5 files |
+| Phase 02.1-rust-deep-analysis P02 | 3 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 02.1-rust-deep-analysis]: risk_color() takes max_raw parameter for project-level normalization (not fixed constant)
 - [Phase 02.1-rust-deep-analysis]: ColorMode::Coverage and Risk fall back to monochrome in file_color() until 02.1-02 wires real data
 - [Phase 02.1-rust-deep-analysis]: New ColorMode variants must be inserted BEFORE serde(other) Monochrome in enum definition
+- [Phase 02.1-rust-deep-analysis]: color_by_coverage() returns muted gray for uninstrumented files to distinguish from no-data (monochrome) and 0% coverage (red)
+- [Phase 02.1-rust-deep-analysis]: color_by_risk() uses max_raw=1.0 placeholder; Plan 03 can refine with project-level PageRank max normalization
 
 ### Pending Todos
 
@@ -103,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T04:54:36.051Z
-Stopped at: Completed 02.1-01-PLAN.md
+Last session: 2026-03-15T05:00:27.031Z
+Stopped at: Completed 02.1-02-PLAN.md
 Resume file: None
