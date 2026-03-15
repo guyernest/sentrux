@@ -192,6 +192,15 @@ fn draw_visual_group(ui: &mut egui::Ui, state: &mut AppState, visual_changed: &m
     {
         state.git_diff_requested = true;
     }
+    // Auto-trigger GSD phase parse when switching TO GsdPhase mode
+    if state.color_mode == ColorMode::GsdPhase
+        && prev_color_mode != ColorMode::GsdPhase
+        && state.gsd_phase_report.is_none()
+        && !state.gsd_phase_running
+        && !state.scanning
+    {
+        state.gsd_phase_requested = true;
+    }
 
     let theme_label = state.theme.label();
     egui::ComboBox::from_id_salt("theme")
