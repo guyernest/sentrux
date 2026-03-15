@@ -13,7 +13,7 @@ Sentrux ships four phases that transform an existing treemap visualizer into a t
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Cleanup** - Remove MCP server, plugin system, and non-Rust/TS/JS language support (completed 2026-03-15)
-- [ ] **Phase 2: PMAT Integration** - Integrate PMAT as analysis engine; display TDG grades and health/mutation panels
+- [x] **Phase 2: PMAT Integration** - Integrate PMAT as analysis engine; display TDG grades and health/mutation panels (completed 2026-03-15)
 - [ ] **Phase 3: Git Diff Overlay** - Color-code treemap nodes by git change recency with selectable time windows
 - [ ] **Phase 4: GSD Phase Overlay** - Color-code treemap nodes by GSD planning phase; complete triple overlay system
 
@@ -44,7 +44,7 @@ Plans:
   3. The health panel shows PMAT's health score for the scanned project
   4. The file detail panel shows TDG component breakdown (scores, penalties, critical defects) when a file is selected
   5. No sentrux-internal grading or rating code remains in the compiled binary (old `metrics/grading`, `metrics/stability`, `metrics/whatif` subtrees deleted)
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — PMAT types, subprocess adapter, and .unwrap() cleanup
@@ -83,6 +83,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
-| 2. PMAT Integration | 3/4 | In Progress|  |
+| 2. PMAT Integration | 3/4 | Complete    | 2026-03-15 |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
