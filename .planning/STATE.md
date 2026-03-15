@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: planning
+stopped_at: Completed 01-cleanup-01-PLAN.md
+last_updated: "2026-03-15T00:56:22.283Z"
+last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
+---
+
 # Project State
 
 ## Project Reference
@@ -14,7 +30,7 @@ Plan: 0 of TBD in current phase
 Status: Ready to plan
 Last activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -34,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01-cleanup P01 | 5 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -46,6 +63,8 @@ Recent decisions affecting current work:
 - [Pre-Phase 1]: Cleanup (MCP server, plugins, language narrowing) can land first as safe subtractive changes
 - [Pre-Phase 1]: Git diff overlay uses existing git2 dependency — relatively bounded scope
 - [Pre-Phase 1]: GSD overlay has highest complexity — needs GSD plan reader + file path normalization
+- [Phase 01-cleanup]: lang_registry.rs rewritten as empty static registry to break plugin::load_all_plugins() dependency; Plan 02 will populate with compiled-in Rust/TS/JS grammars
+- [Phase 01-cleanup]: dirs crate removed by replacing dirs::home_dir() in update_check.rs with HOME/USERPROFILE env var lookup
 
 ### Pending Todos
 
@@ -59,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14
-Stopped at: Roadmap created; no plans written yet
+Last session: 2026-03-15T00:56:22.281Z
+Stopped at: Completed 01-cleanup-01-PLAN.md
 Resume file: None

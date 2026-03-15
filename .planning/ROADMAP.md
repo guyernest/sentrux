@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. No plugin loading code executes at startup; grammar plugin files are absent from the build
   3. Sentrux correctly scans Rust, TypeScript, and JavaScript files and silently skips all other file types without error
   4. The binary builds cleanly with no dead-code warnings from removed subsystems
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — Remove MCP server, plugin system, whatif module, and evolution alias
@@ -76,7 +76,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Cleanup | 0/2 | Planning complete | - |
+| 1. Cleanup | 1/2 | In Progress|  |
 | 2. PMAT Integration | 0/TBD | Not started | - |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |

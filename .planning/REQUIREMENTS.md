@@ -41,8 +41,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Cleanup
 
-- [ ] **CLEN-01**: MCP server mode is removed from sentrux (PMAT provides MCP)
-- [ ] **CLEN-02**: Plugin system (runtime tree-sitter grammar loading) is removed
+- [x] **CLEN-01**: MCP server mode is removed from sentrux (PMAT provides MCP)
+- [x] **CLEN-02**: Plugin system (runtime tree-sitter grammar loading) is removed
 - [ ] **CLEN-03**: Language support is narrowed to Rust, TypeScript, and JavaScript only
 - [ ] **CLEN-04**: Unused analysis code (sentrux's own metrics engine) is removed after PMAT replaces it
 
@@ -100,8 +100,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GSDP-03 | Phase 4 | Pending |
 | GSDP-04 | Phase 4 | Pending |
 | GSDP-05 | Phase 4 | Pending |
-| CLEN-01 | Phase 1 | Pending |
-| CLEN-02 | Phase 1 | Pending |
+| CLEN-01 | Phase 1 | Complete |
+| CLEN-02 | Phase 1 | Complete |
 | CLEN-03 | Phase 1 | Pending |
 | CLEN-04 | Phase 2 | Pending |
 
