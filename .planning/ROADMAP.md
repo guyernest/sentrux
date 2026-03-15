@@ -52,6 +52,19 @@ Plans:
 - [x] 02-03-PLAN.md — PMAT scan pipeline wiring and health/file-detail panels
 - [ ] 02-04-PLAN.md — Delete old metrics engine and rewire check/gate CLI to PMAT
 
+### Phase 02.1: Rust Deep Analysis (INSERTED)
+
+**Goal**: Sentrux provides deep Rust-specific analysis beyond TDG grades — PMAT code rank (PageRank, centrality, community detection), test coverage via cargo-llvm-cov, and clippy advanced linting — all visualized on the treemap and accessible in detail panels
+**Depends on:** Phase 2
+**Requirements**: RANK-01, RANK-02, RANK-03, COV-01, COV-02, COV-03, CLIP-01, CLIP-02
+**Success Criteria** (what must be TRUE):
+  1. PMAT code rank data (PageRank scores, centrality measures) is displayed per-file in the detail panel
+  2. A new ColorMode variant shows files colored by architectural importance (PageRank rank)
+  3. Test coverage percentages from cargo-llvm-cov are shown per-file in the detail panel
+  4. A new ColorMode variant shows files colored by test coverage (green = well-covered, red = uncovered)
+  5. Clippy warnings (pedantic/nursery categories) are counted per-file and shown in the detail panel
+**Plans**: TBD
+
 ### Phase 3: Git Diff Overlay
 **Goal**: A developer can switch to git diff mode and immediately see which files changed recently — color intensity tells them how much changed, and they control the time window
 **Depends on**: Phase 2

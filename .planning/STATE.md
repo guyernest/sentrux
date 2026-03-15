@@ -59,6 +59,10 @@ Progress: [█████░░░░░] 50%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Rust Deep Analysis (INSERTED) — integrate PMAT code rank, test coverage (cargo-llvm-cov), and clippy advanced linting into treemap visualization
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
