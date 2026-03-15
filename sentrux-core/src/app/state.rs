@@ -5,13 +5,9 @@
 //! All fields are public for UI code simplicity; access is serialized by
 //! the single-threaded egui event loop.
 
-use crate::metrics::arch::ArchReport;
-use crate::metrics::dsm::{DesignStructureMatrix, DsmStats};
 use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
-use crate::metrics::rules::checks::RuleCheckResult;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
-use crate::metrics::HealthReport;
 use crate::layout::types::ColorMode;
 use crate::core::pmat_types::PmatReport;
 use crate::core::heat::HeatTracker;
@@ -151,24 +147,14 @@ pub struct AppState {
     pub recent_activity: Vec<ActivityEntry>,
     /// Whether the activity panel is visible
     pub activity_panel_open: bool,
-    /// Whether the DSM panel is visible
-    pub dsm_panel_open: bool,
-    /// Cached DSM matrix + stats, keyed by rendered_version to avoid O(N^2) per-frame rebuild
-    pub dsm_cache: Option<(u64, DesignStructureMatrix, DsmStats)>,
     /// Cached top connected files, keyed by (rendered_version, edge_filter) to avoid O(E) per-frame rebuild
     pub top_connections_cache: Option<(u64, u8, Vec<(String, usize)>)>,
 
-    // ── Health metrics ──
-    /// Code health report — recomputed on each ScanMsg::Complete
-    pub health_report: Option<HealthReport>,
-    /// Architecture report — recomputed on each ScanMsg::Complete
-    pub arch_report: Option<ArchReport>,
+    // ── Analysis reports ──
     /// Evolution report — churn, bus factor, hotspots, change coupling
     pub evolution_report: Option<EvolutionReport>,
     /// Test gap report — coverage ratio, riskiest untested files
     pub test_gap_report: Option<TestGapReport>,
-    /// Architecture rules check result
-    pub rule_check_result: Option<RuleCheckResult>,
     /// PMAT TDG + repo-score analysis — None until scan completes, None if PMAT unavailable
     pub pmat_report: Option<PmatReport>,
     /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
@@ -273,14 +259,9 @@ impl AppState {
             entry_point_files: Arc::new(HashSet::new()),
             recent_activity: Vec::new(),
             activity_panel_open: false,
-            dsm_panel_open: false,
-            dsm_cache: None,
             top_connections_cache: None,
-            health_report: None,
-            arch_report: None,
             evolution_report: None,
             test_gap_report: None,
-            rule_check_result: None,
             pmat_report: None,
             impact_files: None,
             folder_picker_requested: false,

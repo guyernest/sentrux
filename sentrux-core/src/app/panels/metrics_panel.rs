@@ -1,17 +1,14 @@
 //! Metrics panel — always-visible left panel showing all analysis results.
 //!
-//! Displays the 11-dimension health report, architecture metrics,
-//! evolution metrics (churn/bus factor/hotspots/coupling), test gaps,
-//! rules check, and what-if simulation for the selected file.
+//! Displays PMAT quality analysis, evolution metrics (churn/bus factor),
+//! and test gap analysis. The old internal grading/arch/rules panels have
+//! been replaced by the PMAT panel which delegates to `pmat quality-gate`.
 
 use crate::app::state::AppState;
 use crate::license;
 use super::activity_panel::draw_sep;
-use super::health_display::draw_health_section;
-use super::arch_display::draw_arch_section;
 use super::evolution_display::draw_evolution_section;
 use super::testgap_display::draw_testgap_section;
-use super::rules_display::draw_rules_section;
 use super::pmat_panel::draw_pmat_panel;
 use crate::core::settings::ThemeConfig;
 
@@ -51,15 +48,9 @@ pub fn draw_metrics_panel(ctx: &egui::Context, state: &mut AppState) {
 fn draw_metrics_sections(ui: &mut egui::Ui, state: &mut AppState, tc: &ThemeConfig) {
     let tier = license::current_tier();
 
-    // Health + Architecture: always free
-    if let Some(report) = &state.health_report {
-        draw_health_section(ui, report, tc);
-        draw_sep(ui, tc, 4.0);
-    }
-    if let Some(arch) = &state.arch_report {
-        draw_arch_section(ui, arch, tc);
-        draw_sep(ui, tc, 4.0);
-    }
+    // PMAT TDG health summary and file-level breakdown (primary quality display)
+    draw_pmat_panel(ui, state);
+    draw_sep(ui, tc, 4.0);
 
     // Evolution: free shows grades only, pro shows full details (hotspots, coupling, bus factor)
     if let Some(evo) = &state.evolution_report {
@@ -77,17 +68,7 @@ fn draw_metrics_sections(ui: &mut egui::Ui, state: &mut AppState, tc: &ThemeConf
         draw_sep(ui, tc, 4.0);
     }
 
-    // Rules: always free (rule count limited in MCP, GUI shows all for local use)
-    if let Some(rules) = &state.rule_check_result {
-        draw_rules_section(ui, rules, tc);
-        draw_sep(ui, tc, 4.0);
-    }
-
-    // PMAT TDG health summary and file-level breakdown (when pmat_report is available)
-    draw_pmat_panel(ui, state);
-    draw_sep(ui, tc, 4.0);
-
-    if state.health_report.is_none() && state.arch_report.is_none() {
+    if state.pmat_report.is_none() && state.evolution_report.is_none() {
         ui.add_space(16.0);
         ui.label(
             egui::RichText::new("  (scan a project)")
@@ -139,5 +120,4 @@ fn draw_evolution_summary(ui: &mut egui::Ui, report: &crate::metrics::evo::Evolu
             ui.painter().text(egui::pos2(rect.right() - 4.0, cy), egui::Align2::RIGHT_CENTER, value, font.clone(), tc.text_secondary);
         }
     }
-
 }

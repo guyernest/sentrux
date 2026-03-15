@@ -120,8 +120,6 @@ fn send_scan_result(
     match result {
         Ok(scan_result) => {
             let snap = Arc::new(scan_result.snapshot);
-            let report = crate::metrics::compute_health(&snap);
-            let arch = crate::metrics::arch::compute_arch(&snap);
 
             // Build complexity map once and share between evolution and test gap analysis.
             // Previously computed twice — O(N) duplicated work.
@@ -133,9 +131,6 @@ fn send_scan_result(
             // Compute test gap analysis (fast — graph traversal only)
             let test_gaps = compute_test_gap_report_with_map(&snap, &complexity_map);
 
-            // Compute rules check if .sentrux/rules.toml exists
-            let rules = compute_rules_check(root_path, &snap, &report, &arch);
-
             // Run PMAT TDG and repo-score analysis after filesystem scan completes.
             // check_pmat_available() was already called at the start of handle_full/rescan,
             // so PMAT is confirmed available. run_pmat_tdg/repo_score still return None
@@ -146,11 +141,8 @@ fn send_scan_result(
             });
 
             let reports = crate::app::channels::ScanReports {
-                health: Some(report),
-                arch: Some(arch),
                 evolution,
                 test_gaps: Some(test_gaps),
-                rules,
                 pmat,
             };
 
@@ -216,18 +208,6 @@ fn compute_test_gap_report_with_map(
     complexity_map: &std::collections::HashMap<String, u32>,
 ) -> crate::metrics::testgap::TestGapReport {
     crate::metrics::testgap::compute_test_gaps(snap, complexity_map)
-}
-
-/// Compute rules check if .sentrux/rules.toml exists.
-fn compute_rules_check(
-    root: &str,
-    snap: &crate::core::snapshot::Snapshot,
-    health: &crate::metrics::HealthReport,
-    arch: &crate::metrics::arch::ArchReport,
-) -> Option<crate::metrics::rules::checks::RuleCheckResult> {
-    let root_path = std::path::Path::new(root);
-    let config = crate::metrics::rules::RulesConfig::try_load(root_path)?;
-    Some(crate::metrics::rules::check_rules(&config, health, arch, &snap.import_graph))
 }
 
 /// Drain any queued commands, keeping only the latest. [ref:b9f45231]

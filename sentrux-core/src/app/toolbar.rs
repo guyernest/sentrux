@@ -298,12 +298,6 @@ fn draw_edge_toggle(ui: &mut egui::Ui, state: &mut AppState) {
     edge_btn.on_hover_text(tip);
 }
 
-/// Draw the DSM panel toggle button.
-fn draw_dsm_toggle(ui: &mut egui::Ui, state: &mut AppState) {
-    let color = toggle_color(state.dsm_panel_open, egui::Color32::from_rgb(100, 200, 180));
-    let dsm_btn = ui.add(egui::Button::new(egui::RichText::new("DSM").monospace().size(9.0).color(color)));
-    if dsm_btn.on_hover_text("Design Structure Matrix").clicked() { state.dsm_panel_open = !state.dsm_panel_open; }
-}
 
 /// Draw the activity panel toggle button.
 fn draw_activity_toggle(ui: &mut egui::Ui, state: &mut AppState) {
@@ -313,10 +307,9 @@ fn draw_activity_toggle(ui: &mut egui::Ui, state: &mut AppState) {
     if act_btn.on_hover_text("Activity Panel").clicked() { state.activity_panel_open = !state.activity_panel_open; }
 }
 
-/// Toggle buttons for show-all-edges, DSM panel, and activity panel.
+/// Toggle buttons for show-all-edges and activity panel.
 fn draw_toggle_buttons(ui: &mut egui::Ui, state: &mut AppState) {
     draw_edge_toggle(ui, state);
-    draw_dsm_toggle(ui, state);
     draw_activity_toggle(ui, state);
 }
 

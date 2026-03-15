@@ -54,19 +54,16 @@ fn draw_left_info(ui: &mut egui::Ui, state: &AppState) {
     }
 }
 
-/// Right side: zoom percentage, compact grades, file/edge counts.
+/// Right side: zoom percentage, PMAT grade (if available), file/edge counts.
 fn draw_right_stats(ui: &mut egui::Ui, state: &AppState) {
     let vp = &state.viewport;
     ui.label(egui::RichText::new(format!("{:.0}%", vp.scale * 100.0)).weak().monospace());
 
-    // Compact grade display — just the overall letter, no dimension breakdown
-    if let Some(arch) = &state.arch_report {
-        let c = grade_color(arch.arch_grade);
-        ui.label(egui::RichText::new(format!("Arch:{}", arch.arch_grade)).monospace().color(c));
-    }
-    if let Some(report) = &state.health_report {
-        let c = grade_color(report.grade);
-        ui.label(egui::RichText::new(format!("Health:{}", report.grade)).monospace().color(c));
+    // Show PMAT TDG average grade in the status bar
+    if let Some(pmat) = &state.pmat_report {
+        let grade = &pmat.tdg.average_grade;
+        let c = grade_color(grade.chars().next().unwrap_or('-'));
+        ui.label(egui::RichText::new(format!("TDG:{}", grade)).monospace().color(c));
     }
 
     draw_edge_file_counts(ui, state);

@@ -55,10 +55,6 @@ fn draw_side_panels(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pane
             result.visual_changed = true;
         }
 
-    if app.state.dsm_panel_open && app.state.snapshot.is_some()
-        && crate::app::panels::dsm_panel::draw_dsm_panel(ctx, &mut app.state) {
-            result.visual_changed = true;
-        }
 }
 
 /// Draw all non-canvas panels. Returns what changed so update_loop can act.

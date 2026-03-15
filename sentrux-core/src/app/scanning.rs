@@ -76,16 +76,14 @@ impl SentruxApp {
         reports: crate::app::channels::ScanReports,
         ctx: &egui::Context,
     ) {
-        let report = reports.health.unwrap_or_else(|| crate::metrics::compute_health(&snap));
-        let arch = reports.arch.unwrap_or_else(|| crate::metrics::arch::compute_arch(&snap));
-        self.check_arch_degradation(&arch);
-        // Record scan for telemetry
-        crate::app::update_check::record_scan(snap.total_files, report.grade);
-        self.state.health_report = Some(report);
-        self.state.arch_report = Some(arch);
+        // Record scan for telemetry (use pmat grade if available, else '-')
+        let grade = reports.pmat.as_ref()
+            .and_then(|p| p.repo_score.as_ref())
+            .map(|rs| rs.grade.chars().next().unwrap_or('-'))
+            .unwrap_or('-');
+        crate::app::update_check::record_scan(snap.total_files, grade);
         self.state.evolution_report = reports.evolution;
         self.state.test_gap_report = reports.test_gaps;
-        self.state.rule_check_result = reports.rules;
         self.state.pmat_report = reports.pmat;
         self.state.snapshot = Some(snap);
         self.state.scanning = false;
@@ -119,37 +117,6 @@ impl SentruxApp {
                 self.state.scanning = false;
                 ctx.request_repaint();
             }
-        }
-    }
-
-    /// Log specific architecture regressions between previous and current reports.
-    fn log_arch_regressions(prev: &crate::metrics::arch::ArchReport, current: &crate::metrics::arch::ArchReport) {
-        if current.upward_violations.len() > prev.upward_violations.len() {
-            eprintln!(
-                "[arch-diff] Upward violations increased: {} -> {}",
-                prev.upward_violations.len(), current.upward_violations.len()
-            );
-        }
-        if current.max_blast_radius > prev.max_blast_radius + 2 {
-            eprintln!(
-                "[arch-diff] Max blast radius increased: {} -> {} ({})",
-                prev.max_blast_radius, current.max_blast_radius, current.max_blast_file
-            );
-        }
-    }
-
-    /// Compare current arch report against previous one and log regressions.
-    fn check_arch_degradation(&mut self, arch: &crate::metrics::arch::ArchReport) {
-        let prev_arch = match &self.state.arch_report {
-            Some(p) => p,
-            None => return,
-        };
-        Self::log_arch_regressions(prev_arch, arch);
-        if arch.arch_grade > prev_arch.arch_grade {
-            self.state.record_activity(
-                format!("Architecture degraded: {} -> {}", prev_arch.arch_grade, arch.arch_grade),
-                "arch_degraded".to_string(),
-            );
         }
     }
 
@@ -497,14 +464,10 @@ impl SentruxApp {
         self.state.render_data = None;
         self.state.spatial_index = None;
         self.state.snapshot = None;
-        self.state.health_report = None;
-        self.state.arch_report = None;
         self.state.evolution_report = None;
         self.state.test_gap_report = None;
-        self.state.rule_check_result = None;
         self.state.pmat_report = None;
-self.state.impact_files = None;
-        self.state.dsm_cache = None;
+        self.state.impact_files = None;
         self.state.top_connections_cache = None;
         self.state.drill_stack.clear();
         self.state.selected_path = None;

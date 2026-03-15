@@ -255,7 +255,6 @@ impl SentruxApp {
             edge_filter: self.state.edge_filter,
             show_all_edges: self.state.show_all_edges,
             snapshot: self.state.snapshot.as_ref(),
-            arch_report: self.state.arch_report.as_ref(),
             pmat_report: self.state.pmat_report.as_ref(),
             heat: &self.state.heat,
             frame_instant: self.state.frame_instant,

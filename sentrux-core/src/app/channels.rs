@@ -8,11 +8,8 @@ use crate::layout::types::{LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::core::settings::Settings;
 use crate::layout::types::FocusMode;
 use crate::core::snapshot::{ScanProgress, Snapshot};
-use crate::metrics::HealthReport;
-use crate::metrics::arch::ArchReport;
 use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
-use crate::metrics::rules::checks::RuleCheckResult;
 use crate::core::pmat_types::PmatReport;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -50,16 +47,10 @@ pub enum ScanCommand {
 /// All reports computed on the scanner thread after scan completion.
 /// Bundled into a struct to keep ScanMsg::Complete tidy as we add more analyses.
 pub struct ScanReports {
-    /// Code health report (coupling, complexity, dead code, etc.)
-    pub health: Option<HealthReport>,
-    /// Architecture report (layers, abstractness, distance from main sequence)
-    pub arch: Option<ArchReport>,
     /// Git evolution report (churn, temporal coupling, bus factor)
     pub evolution: Option<EvolutionReport>,
     /// Test gap analysis (untested high-risk files)
     pub test_gaps: Option<TestGapReport>,
-    /// Architecture rule check results
-    pub rules: Option<RuleCheckResult>,
     /// PMAT TDG + repo-score analysis — None if PMAT subprocess fails
     pub pmat: Option<PmatReport>,
 }
@@ -182,15 +173,11 @@ mod tests {
         let tdg = make_tdg_with_files(&["./src/main.rs"]);
         let report = PmatReport::from_tdg(tdg, None);
         let reports = ScanReports {
-            health: None,
-            arch: None,
             evolution: None,
             test_gaps: None,
-            rules: None,
             pmat: Some(report),
         };
         assert!(reports.pmat.is_some());
         assert_eq!(reports.pmat.as_ref().unwrap().tdg.total_files, 1);
     }
 }
-

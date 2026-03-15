@@ -15,7 +15,6 @@ pub mod rects;
 use crate::core::snapshot::Snapshot;
 use crate::core::types::FileIndexEntry;
 use crate::layout::types::{EdgeFilter, RectKind, RenderData};
-use crate::metrics::arch::ArchReport;
 use crate::layout::types::ColorMode;
 use crate::core::heat::HeatTracker;
 use crate::core::settings::ThemeConfig;
@@ -58,8 +57,6 @@ pub struct RenderContext<'a> {
     pub show_all_edges: bool,
     /// Full snapshot for entry-point and exec-depth lookups
     pub snapshot: Option<&'a Arc<Snapshot>>,
-    /// Architecture report for blast-radius color mode
-    pub arch_report: Option<&'a ArchReport>,
     /// PMAT TDG analysis report for TdgGrade color mode and badge rendering.
     /// Set to None until Plan 03 populates it from AppState.
     pub pmat_report: Option<&'a crate::core::pmat_types::PmatReport>,
