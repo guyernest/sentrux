@@ -150,7 +150,78 @@ mod tests {
 
     #[test]
     fn test_registry_loads() {
-        // Should not panic; registry initializes empty until Plan 02 adds grammars
         let _ = &*REGISTRY;
+    }
+
+    // --- New tests for static grammar registry (Plan 02) ---
+
+    #[test]
+    fn test_get_grammar_and_query_rust() {
+        assert!(get_grammar_and_query("rust").is_some(), "rust grammar must be present");
+    }
+
+    #[test]
+    fn test_get_grammar_and_query_typescript() {
+        assert!(get_grammar_and_query("typescript").is_some(), "typescript grammar must be present");
+    }
+
+    #[test]
+    fn test_get_grammar_and_query_javascript() {
+        assert!(get_grammar_and_query("javascript").is_some(), "javascript grammar must be present");
+    }
+
+    #[test]
+    fn test_get_grammar_and_query_python_none() {
+        assert!(get_grammar_and_query("python").is_none(), "python must not be registered");
+    }
+
+    #[test]
+    fn test_get_grammar_and_query_go_none() {
+        assert!(get_grammar_and_query("go").is_none(), "go must not be registered");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_rs() {
+        assert_eq!(detect_lang_from_ext("rs"), "rust");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_ts() {
+        assert_eq!(detect_lang_from_ext("ts"), "typescript");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_tsx() {
+        assert_eq!(detect_lang_from_ext("tsx"), "typescript");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_js() {
+        assert_eq!(detect_lang_from_ext("js"), "javascript");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_jsx() {
+        assert_eq!(detect_lang_from_ext("jsx"), "javascript");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_mjs() {
+        assert_eq!(detect_lang_from_ext("mjs"), "javascript");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_cjs() {
+        assert_eq!(detect_lang_from_ext("cjs"), "javascript");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_py_unknown() {
+        assert_eq!(detect_lang_from_ext("py"), "unknown");
+    }
+
+    #[test]
+    fn test_detect_lang_from_ext_go_unknown() {
+        assert_eq!(detect_lang_from_ext("go"), "unknown");
     }
 }
