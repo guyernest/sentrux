@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-15T01:30:33.769Z"
+stopped_at: Completed 02-pmat-integration 02-01-PLAN.md
+last_updated: "2026-03-15T02:16:33.631Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 6
+  completed_plans: 3
   percent: 50
 ---
 
@@ -52,6 +52,7 @@ Progress: [█████░░░░░] 50%
 *Updated after each plan completion*
 | Phase 01-cleanup P01 | 5 | 2 tasks | 11 files |
 | Phase 01-cleanup P02 | 3 | 2 tasks | 3 files |
+| Phase 02-pmat-integration P01 | 5 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Recent decisions affecting current work:
 - [Phase 01-cleanup]: Language::new(LanguageFn) pattern used for tree-sitter 0.25 grammar compilation; tsx maps to LANGUAGE_TYPESCRIPT
 - [Phase 01-cleanup]: PluginLangConfig renamed to LangConfig to remove plugin terminology from the static registry
 - [Phase 01-cleanup]: Pre-existing oracle failures (27) for removed languages are expected; 3-language binary is CLEN-03 complete
+- [Phase 02-pmat-integration]: PmatReport by_path uses index into tdg.files (zero-copy lookup) not clone
+- [Phase 02-pmat-integration]: run_pmat_tdg accepts non-zero exit: PMAT exits 1 on critical defects but writes valid JSON
+- [Phase 02-pmat-integration]: Tarjan SCC .unwrap() replaced with .expect(invariant msg) to satisfy PMAT heuristic
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T01:30:33.767Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-pmat-integration/02-CONTEXT.md
+Last session: 2026-03-15T02:16:33.629Z
+Stopped at: Completed 02-pmat-integration 02-01-PLAN.md
+Resume file: None
