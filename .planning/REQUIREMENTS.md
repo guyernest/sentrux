@@ -25,10 +25,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Git Diff Overlay
 
-- [ ] **GDIT-01**: User can see treemap nodes color-coded by git changes within a selectable time window
-- [ ] **GDIT-02**: Time window options include at minimum: 15 minutes, 1 hour, 1 day, 1 week
-- [ ] **GDIT-03**: Changed files show intensity based on number of lines changed (hotter = more changes)
-- [ ] **GDIT-04**: Unchanged files are visually muted so changed files stand out
+- [x] **GDIT-01**: User can see treemap nodes color-coded by git changes within a selectable time window
+- [x] **GDIT-02**: Time window options include at minimum: 15 minutes, 1 hour, 1 day, 1 week
+- [x] **GDIT-03**: Changed files show intensity based on number of lines changed (hotter = more changes)
+- [x] **GDIT-04**: Unchanged files are visually muted so changed files stand out
 - [ ] **GDIT-05**: Git diff computation runs on a background thread without freezing the UI
 
 ### GSD Phase Overlay
@@ -107,10 +107,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OVRL-01 | Phase 3 | Pending |
 | OVRL-02 | Phase 3 | Pending |
 | OVRL-03 | Phase 3 | Pending |
-| GDIT-01 | Phase 3 | Pending |
-| GDIT-02 | Phase 3 | Pending |
-| GDIT-03 | Phase 3 | Pending |
-| GDIT-04 | Phase 3 | Pending |
+| GDIT-01 | Phase 3 | Complete |
+| GDIT-02 | Phase 3 | Complete |
+| GDIT-03 | Phase 3 | Complete |
+| GDIT-04 | Phase 3 | Complete |
 | GDIT-05 | Phase 3 | Pending |
 | GSDP-01 | Phase 4 | Pending |
 | GSDP-02 | Phase 4 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-15T06:38:59.918Z"
+stopped_at: Completed 03-git-diff-overlay 03-01-PLAN.md
+last_updated: "2026-03-15T14:24:05.867Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 12
+  completed_plans: 10
   percent: 50
 ---
 
@@ -59,6 +59,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02.1-rust-deep-analysis P01 | 4 | 2 tasks | 5 files |
 | Phase 02.1-rust-deep-analysis P02 | 3 | 2 tasks | 8 files |
 | Phase 02.1-rust-deep-analysis P03 | 90 | 2 tasks | 12 files |
+| Phase 03-git-diff-overlay P01 | 7 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Recent decisions affecting current work:
 - [Phase 02.1-rust-deep-analysis]: color_by_risk() uses max_raw=1.0 placeholder; Plan 03 can refine with project-level PageRank max normalization
 - [Phase 02.1-rust-deep-analysis]: coverage_requested flag routes coverage spawn through draw_panels.rs (owns scan_msg_tx) — toolbar stays stateless
 - [Phase 02.1-rust-deep-analysis]: risk normalization: max_raw computed per-frame from max PageRank; propagated via RenderContext so color_by_risk() stays pure
+- [Phase 03-git-diff-overlay]: GitDiff serializes to 'GitDiff' (PascalCase) via serde(rename) to distinguish from lowercase rename_all convention
+- [Phase 03-git-diff-overlay]: raw_intensity = sqrt(lines * commits): geometric mean prevents either volume or frequency from dominating
+- [Phase 03-git-diff-overlay]: muted gray (50,52,55) for files not in git diff report: distinguishes unchanged-in-window from no-data (GDIT-04)
 
 ### Pending Todos
 
@@ -109,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T06:38:59.912Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-git-diff-overlay/03-CONTEXT.md
+Last session: 2026-03-15T14:24:05.865Z
+Stopped at: Completed 03-git-diff-overlay 03-01-PLAN.md
+Resume file: None
