@@ -31,8 +31,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 01-01-PLAN.md — Remove MCP server, plugin system, whatif module, and evolution alias
-- [ ] 01-02-PLAN.md — Rewrite lang_registry as static 3-language registry with compiled-in grammars
+- [x] 01-01-PLAN.md — Remove MCP server, plugin system, whatif module, and evolution alias
+- [x] 01-02-PLAN.md — Rewrite lang_registry as static 3-language registry with compiled-in grammars
 
 ### Phase 2: PMAT Integration
 **Goal**: Every file node in the treemap displays a PMAT TDG grade, and the health/mutation panels show PMAT data — sentrux's own analysis engine is gone
@@ -42,9 +42,15 @@ Plans:
   1. Opening a Rust project shows TDG grade badges (A+ through F) on file nodes in the treemap within one scan cycle
   2. Treemap node color reflects TDG grade (green for A+/A, red for D/F) with no grades from the old sentrux grading system visible anywhere
   3. The health panel shows PMAT's health score for the scanned project
-  4. The file detail panel shows PMAT mutation testing results when a file is selected
+  4. The file detail panel shows TDG component breakdown (scores, penalties, critical defects) when a file is selected
   5. No sentrux-internal grading or rating code remains in the compiled binary (old `metrics/grading`, `metrics/stability`, `metrics/whatif` subtrees deleted)
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — PMAT types, subprocess adapter, and .unwrap() cleanup
+- [ ] 02-02-PLAN.md — ColorMode pruning, TDG grade coloring, and badge rendering
+- [ ] 02-03-PLAN.md — PMAT scan pipeline wiring and health/file-detail panels
+- [ ] 02-04-PLAN.md — Delete old metrics engine and rewire check/gate CLI to PMAT
 
 ### Phase 3: Git Diff Overlay
 **Goal**: A developer can switch to git diff mode and immediately see which files changed recently — color intensity tells them how much changed, and they control the time window
@@ -77,6 +83,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
-| 2. PMAT Integration | 0/TBD | Not started | - |
+| 2. PMAT Integration | 0/4 | Planning complete | - |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
