@@ -80,36 +80,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PMAT-01 | — | Pending |
-| PMAT-02 | — | Pending |
-| PMAT-03 | — | Pending |
-| PMAT-04 | — | Pending |
-| PMAT-05 | — | Pending |
-| PMAT-06 | — | Pending |
-| PMAT-07 | — | Pending |
-| OVRL-01 | — | Pending |
-| OVRL-02 | — | Pending |
-| OVRL-03 | — | Pending |
-| GDIT-01 | — | Pending |
-| GDIT-02 | — | Pending |
-| GDIT-03 | — | Pending |
-| GDIT-04 | — | Pending |
-| GDIT-05 | — | Pending |
-| GSDP-01 | — | Pending |
-| GSDP-02 | — | Pending |
-| GSDP-03 | — | Pending |
-| GSDP-04 | — | Pending |
-| GSDP-05 | — | Pending |
-| CLEN-01 | — | Pending |
-| CLEN-02 | — | Pending |
-| CLEN-03 | — | Pending |
-| CLEN-04 | — | Pending |
+| PMAT-01 | Phase 2 | Pending |
+| PMAT-02 | Phase 2 | Pending |
+| PMAT-03 | Phase 2 | Pending |
+| PMAT-04 | Phase 2 | Pending |
+| PMAT-05 | Phase 2 | Pending |
+| PMAT-06 | Phase 2 | Pending |
+| PMAT-07 | Phase 2 | Pending |
+| OVRL-01 | Phase 3 | Pending |
+| OVRL-02 | Phase 3 | Pending |
+| OVRL-03 | Phase 3 | Pending |
+| GDIT-01 | Phase 3 | Pending |
+| GDIT-02 | Phase 3 | Pending |
+| GDIT-03 | Phase 3 | Pending |
+| GDIT-04 | Phase 3 | Pending |
+| GDIT-05 | Phase 3 | Pending |
+| GSDP-01 | Phase 4 | Pending |
+| GSDP-02 | Phase 4 | Pending |
+| GSDP-03 | Phase 4 | Pending |
+| GSDP-04 | Phase 4 | Pending |
+| GSDP-05 | Phase 4 | Pending |
+| CLEN-01 | Phase 1 | Pending |
+| CLEN-02 | Phase 1 | Pending |
+| CLEN-03 | Phase 1 | Pending |
+| CLEN-04 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️
+- Mapped to phases: 24
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after initial definition*
+*Last updated: 2026-03-14 after roadmap creation*
