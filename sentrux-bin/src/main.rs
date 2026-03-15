@@ -1,9 +1,8 @@
-//! Sentrux binary — GUI, CLI, and MCP entry points.
+//! Sentrux binary — GUI and CLI entry points.
 //!
 //! All logic lives in `sentrux-core`. This crate is just the entry point
 //! that wires together the three modes:
 //! - GUI mode (default): interactive treemap/blueprint visualizer
-//! - MCP mode (`sentrux mcp`): Model Context Protocol server for AI agent integration
 //! - Check mode (`sentrux check [path]`): CLI architectural rules enforcement
 //! - Gate mode (`sentrux gate [--save] [path]`): structural regression testing
 
@@ -40,10 +39,6 @@ struct Cli {
     /// Directory to open in the GUI
     #[arg(global = false)]
     path: Option<String>,
-
-    /// Start MCP server (hidden alias for `sentrux mcp`)
-    #[arg(long = "mcp", hide = true)]
-    mcp_flag: bool,
 }
 
 #[derive(Subcommand)]
@@ -71,48 +66,6 @@ enum Command {
         /// Directory to visualize
         path: Option<String>,
     },
-
-    /// Start the MCP (Model Context Protocol) server for AI agent integration
-    Mcp,
-
-    /// Manage language plugins
-    Plugin {
-        #[command(subcommand)]
-        action: PluginAction,
-    },
-}
-
-#[derive(Subcommand)]
-enum PluginAction {
-    /// List installed plugins
-    List,
-
-    /// Install all standard language plugins
-    AddStandard,
-
-    /// Install a single language plugin from the plugin registry
-    Add {
-        /// Plugin name (e.g. "python", "rust")
-        name: String,
-    },
-
-    /// Remove an installed plugin
-    Remove {
-        /// Plugin name to remove
-        name: String,
-    },
-
-    /// Create a new plugin template
-    Init {
-        /// Language name for the new plugin
-        name: String,
-    },
-
-    /// Validate a plugin directory
-    Validate {
-        /// Path to the plugin directory
-        dir: String,
-    },
 }
 
 // ---------------------------------------------------------------------------
@@ -120,19 +73,10 @@ enum PluginAction {
 // ---------------------------------------------------------------------------
 
 fn main() -> eframe::Result<()> {
-    // Auto-install standard plugins on first run
-    auto_install_plugins_if_needed();
-
     // Non-blocking update check (once per day, background thread)
     app::update_check::check_for_updates_async(env!("CARGO_PKG_VERSION"));
 
     let cli = Cli::parse();
-
-    // Hidden --mcp flag for backward compat with MCP client configs
-    if cli.mcp_flag {
-        app::mcp_server::run_mcp_server(None);
-        return Ok(());
-    }
 
     match cli.command {
         Some(Command::Check { path }) => {
@@ -140,14 +84,6 @@ fn main() -> eframe::Result<()> {
         }
         Some(Command::Gate { save, path }) => {
             std::process::exit(run_gate(&path, save));
-        }
-        Some(Command::Mcp) => {
-            app::mcp_server::run_mcp_server(None);
-            Ok(())
-        }
-        Some(Command::Plugin { action }) => {
-            run_plugin(action);
-            Ok(())
         }
         Some(Command::Scan { path }) => {
             run_gui(path)
@@ -332,220 +268,6 @@ fn gate_compare(
 }
 
 // ---------------------------------------------------------------------------
-// Plugin
-// ---------------------------------------------------------------------------
-
-fn run_plugin(action: PluginAction) {
-    match action {
-        PluginAction::List => {
-            let dir = sentrux_core::analysis::plugin::plugins_dir();
-            println!("Plugin directory: {}", dir.as_ref().map_or("(none)".into(), |d| d.display().to_string()));
-            let (loaded, errors) = sentrux_core::analysis::plugin::load_all_plugins();
-            if loaded.is_empty() && errors.is_empty() {
-                println!("No plugins installed.");
-                println!("\nInstall a plugin by placing it in ~/.sentrux/plugins/<name>/");
-            } else {
-                for p in &loaded {
-                    println!("  {} v{} [{}] — {}", p.name, p.version, p.extensions.join(", "), p.display_name);
-                }
-                for e in &errors {
-                    println!("  (error) {} — {}", e.plugin_dir.display(), e.error);
-                }
-            }
-        }
-        PluginAction::Init { name } => {
-            let dir = sentrux_core::analysis::plugin::plugins_dir()
-                .unwrap_or_else(|| { eprintln!("Cannot determine home directory"); std::process::exit(1); });
-            let plugin_dir = dir.join(&name);
-            if plugin_dir.exists() {
-                eprintln!("Plugin directory already exists: {}", plugin_dir.display());
-                std::process::exit(1);
-            }
-            std::fs::create_dir_all(plugin_dir.join("grammars")).unwrap();
-            std::fs::create_dir_all(plugin_dir.join("queries")).unwrap();
-            std::fs::create_dir_all(plugin_dir.join("tests")).unwrap();
-            std::fs::write(plugin_dir.join("plugin.toml"), format!(r#"[plugin]
-name = "{name}"
-display_name = "{name}"
-version = "0.1.0"
-extensions = ["TODO"]
-min_sentrux_version = "0.1.3"
-
-[plugin.metadata]
-author = ""
-description = ""
-
-[grammar]
-source = "https://github.com/TODO/tree-sitter-{name}"
-ref = "main"
-abi_version = 14
-
-[queries]
-capabilities = ["functions", "classes", "imports"]
-
-[checksums]
-"#)).unwrap();
-            std::fs::write(plugin_dir.join("queries").join("tags.scm"),
-                ";; TODO: Write tree-sitter queries for this language\n;;\n;; Required captures:\n;;   @func.def / @func.name — function definitions\n;;   @class.def / @class.name — class definitions\n;;   @import.path — import statements\n;;   @call.name — function calls (optional)\n"
-            ).unwrap();
-            println!("Created plugin template at {}", plugin_dir.display());
-            println!("\nNext steps:");
-            println!("  1. Edit plugin.toml — set extensions, grammar source");
-            println!("  2. Build the grammar: tree-sitter generate && cc -shared -o grammars/{} src/parser.c",
-                sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename());
-            println!("  3. Write queries/tags.scm");
-            println!("  4. Test: sentrux plugin validate {}", plugin_dir.display());
-        }
-        PluginAction::Validate { dir } => {
-            let plugin_dir = std::path::Path::new(&dir);
-            print!("Validating {}... ", plugin_dir.display());
-            match sentrux_core::analysis::plugin::manifest::PluginManifest::load(plugin_dir) {
-                Ok(manifest) => {
-                    println!("plugin.toml OK");
-                    println!("  name: {}", manifest.plugin.name);
-                    println!("  version: {}", manifest.plugin.version);
-                    println!("  extensions: [{}]", manifest.plugin.extensions.join(", "));
-                    println!("  capabilities: [{}]", manifest.queries.capabilities.join(", "));
-                    let query_path = plugin_dir.join("queries").join("tags.scm");
-                    match std::fs::read_to_string(&query_path) {
-                        Ok(qs) => {
-                            match manifest.validate_query_captures(&qs) {
-                                Ok(()) => println!("  queries/tags.scm: OK (captures valid)"),
-                                Err(e) => println!("  queries/tags.scm: FAIL — {}", e),
-                            }
-                        }
-                        Err(e) => println!("  queries/tags.scm: MISSING — {}", e),
-                    }
-                    let gf = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
-                    let gp = plugin_dir.join("grammars").join(gf);
-                    if gp.exists() {
-                        println!("  grammars/{}: OK", gf);
-                    } else {
-                        println!("  grammars/{}: MISSING — build the grammar first", gf);
-                    }
-                }
-                Err(e) => {
-                    println!("FAIL — {}", e);
-                    std::process::exit(1);
-                }
-            }
-        }
-        PluginAction::AddStandard => {
-            let standard = [
-                "python", "javascript", "typescript", "rust", "go",
-                "c", "cpp", "java", "ruby", "csharp", "php", "bash",
-                "html", "css", "scss", "swift", "lua", "scala",
-                "elixir", "haskell", "zig", "r", "ocaml",
-            ];
-            let dir = sentrux_core::analysis::plugin::plugins_dir()
-                .unwrap_or_else(|| { eprintln!("Cannot determine home directory"); std::process::exit(1); });
-            std::fs::create_dir_all(&dir).unwrap();
-            let platform = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
-            let platform_key = platform.rsplit_once('.').map_or(platform, |(k, _)| k);
-            let mut installed = 0;
-            let mut skipped = 0;
-            for name in &standard {
-                let plugin_dir = dir.join(name);
-                if plugin_dir.exists() {
-                    skipped += 1;
-                    continue;
-                }
-                let url = format!(
-                    "https://github.com/sentrux/plugins/releases/download/{name}-v0.1.0/{name}-{platform_key}.tar.gz"
-                );
-                print!("  Installing {name}...");
-                let _ = std::io::Write::flush(&mut std::io::stdout());
-                let ok = std::process::Command::new("curl")
-                    .args(["-fsSL", &url, "-o"])
-                    .arg(dir.join(format!("{name}.tar.gz")))
-                    .status()
-                    .is_ok_and(|s| s.success());
-                if ok {
-                    let extracted = std::process::Command::new("tar")
-                        .args(["xzf", &format!("{name}.tar.gz")])
-                        .current_dir(&dir)
-                        .status()
-                        .is_ok_and(|s| s.success());
-                    let _ = std::fs::remove_file(dir.join(format!("{name}.tar.gz")));
-                    if extracted {
-                        println!(" ok");
-                        installed += 1;
-                    } else {
-                        println!(" failed (extract)");
-                    }
-                } else {
-                    let _ = std::fs::remove_file(dir.join(format!("{name}.tar.gz")));
-                    println!(" failed (download)");
-                }
-            }
-            println!("\nInstalled {installed} languages ({skipped} already installed)");
-        }
-        PluginAction::Add { name } => {
-            let dir = sentrux_core::analysis::plugin::plugins_dir()
-                .unwrap_or_else(|| { eprintln!("Cannot determine home directory"); std::process::exit(1); });
-            let plugin_dir = dir.join(&name);
-            if plugin_dir.exists() {
-                eprintln!("Plugin '{}' already installed at {}", name, plugin_dir.display());
-                eprintln!("Remove it first: sentrux plugin remove {}", name);
-                std::process::exit(1);
-            }
-
-            let platform = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
-            let platform_key = platform.rsplit_once('.').map_or(platform, |(k, _)| k);
-
-            let url = format!(
-                "https://github.com/sentrux/plugins/releases/download/{name}-v0.1.0/{name}-{platform_key}.tar.gz"
-            );
-            println!("Downloading {name} plugin for {platform_key}...");
-            println!("  {url}");
-
-            std::fs::create_dir_all(&dir).unwrap();
-
-            let output = std::process::Command::new("curl")
-                .args(["-fsSL", &url, "-o"])
-                .arg(dir.join(format!("{name}.tar.gz")))
-                .status();
-
-            match output {
-                Ok(s) if s.success() => {
-                    let extract = std::process::Command::new("tar")
-                        .args(["xzf", &format!("{name}.tar.gz")])
-                        .current_dir(&dir)
-                        .status();
-                    let _ = std::fs::remove_file(dir.join(format!("{name}.tar.gz")));
-                    match extract {
-                        Ok(s) if s.success() => {
-                            println!("Installed {name} to {}", plugin_dir.display());
-                        }
-                        _ => {
-                            eprintln!("Failed to extract plugin archive");
-                            std::process::exit(1);
-                        }
-                    }
-                }
-                _ => {
-                    let _ = std::fs::remove_file(dir.join(format!("{name}.tar.gz")));
-                    eprintln!("Failed to download plugin '{name}'.");
-                    eprintln!("Check available plugins: https://github.com/sentrux/plugins/releases");
-                    std::process::exit(1);
-                }
-            }
-        }
-        PluginAction::Remove { name } => {
-            let dir = sentrux_core::analysis::plugin::plugins_dir()
-                .unwrap_or_else(|| { eprintln!("Cannot determine home directory"); std::process::exit(1); });
-            let plugin_dir = dir.join(&name);
-            if !plugin_dir.exists() {
-                eprintln!("Plugin '{}' not installed.", name);
-                std::process::exit(1);
-            }
-            std::fs::remove_dir_all(&plugin_dir).unwrap();
-            println!("Removed plugin '{}'", name);
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
 // GUI
 // ---------------------------------------------------------------------------
 
@@ -666,72 +388,4 @@ fn cli_scan_limits() -> analysis::scanner::common::ScanLimits {
         max_parse_size_kb: s.max_parse_size_kb,
         max_call_targets: s.max_call_targets,
     }
-}
-
-/// Auto-install standard language plugins if none are found.
-/// Runs on first launch — gives users a working tool without manual steps.
-fn auto_install_plugins_if_needed() {
-    let dir = match sentrux_core::analysis::plugin::plugins_dir() {
-        Some(d) => d,
-        None => return,
-    };
-    // Check if any plugin directory with a valid plugin.toml exists
-    if dir.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(&dir) {
-            let has_valid_plugin = entries
-                .filter_map(|e| e.ok())
-                .any(|e| e.path().is_dir() && e.path().join("plugin.toml").exists());
-            if has_valid_plugin {
-                return; // plugins exist, skip auto-install
-            }
-        }
-    }
-
-    eprintln!("\nFirst run — installing standard language plugins...\n");
-    std::fs::create_dir_all(&dir).ok();
-
-    let platform = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
-    let platform_key = platform.rsplit_once('.').map_or(platform, |(k, _)| k);
-
-    let standard = [
-        "python", "javascript", "typescript", "rust", "go",
-        "c", "cpp", "java", "ruby", "csharp", "php", "bash",
-        "html", "css", "scss", "swift", "lua", "scala",
-        "elixir", "haskell", "zig", "r",
-    ];
-
-    let mut installed = 0;
-    for name in &standard {
-        let plugin_dir = dir.join(name);
-        if plugin_dir.exists() { continue; }
-        let url = format!(
-            "https://github.com/sentrux/plugins/releases/download/{name}-v0.1.0/{name}-{platform_key}.tar.gz"
-        );
-        eprint!("  {name}...");
-        let ok = std::process::Command::new("curl")
-            .args(["-fsSL", &url, "-o"])
-            .arg(dir.join(format!("{name}.tar.gz")))
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .is_ok_and(|s| s.success());
-        if ok {
-            let extracted = std::process::Command::new("tar")
-                .args(["xzf", &format!("{name}.tar.gz")])
-                .current_dir(&dir)
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .is_ok_and(|s| s.success());
-            let _ = std::fs::remove_file(dir.join(format!("{name}.tar.gz")));
-            if extracted {
-                eprint!(" ok  ");
-                installed += 1;
-                if installed % 6 == 0 { eprintln!(); }
-            }
-        } else {
-            let _ = std::fs::remove_file(dir.join(format!("{name}.tar.gz")));
-        }
-    }
-    eprintln!("\n\n  Installed {installed} language plugins.\n");
 }

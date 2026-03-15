@@ -1,17 +1,18 @@
 //! Language registry — maps file extensions to tree-sitter grammars and queries.
 //!
-//! All languages are loaded as runtime plugins from ~/.sentrux/plugins/.
-//! No grammars are compiled into the binary. This keeps the binary small (~5MB)
-//! and allows anyone to add language support without recompilation.
+//! Currently an empty registry (no grammars compiled in). Plan 02 will replace
+//! this with a static registry of compiled-in Rust, TypeScript, and JavaScript
+//! grammars using tree-sitter-rust, tree-sitter-typescript, and
+//! tree-sitter-javascript crates.
 
 use std::collections::HashMap;
 use tree_sitter::{Language, Query};
 
-/// Configuration for a runtime-loaded language plugin.
+/// Configuration for a language.
 pub struct PluginLangConfig {
     /// Language name (owned)
     pub name: String,
-    /// Compiled tree-sitter grammar (loaded from .so/.dylib)
+    /// Compiled tree-sitter grammar
     pub grammar: Language,
     /// Compiled tree-sitter query for structural extraction
     pub query: Query,
@@ -19,72 +20,23 @@ pub struct PluginLangConfig {
     pub extensions: Vec<String>,
 }
 
-/// Central registry mapping language names and file extensions to loaded plugins.
+/// Central registry mapping language names and file extensions to configs.
 pub struct LangRegistry {
     by_name: HashMap<String, usize>,
     by_ext: HashMap<String, usize>,
     configs: Vec<PluginLangConfig>,
-    /// Plugins that failed to load (logged, not fatal).
-    failed: Vec<String>,
 }
 
-/// Global singleton — loads plugins from ~/.sentrux/plugins/ once at startup.
+/// Global singleton — currently empty; Plan 02 will populate with compiled-in grammars.
 static REGISTRY: std::sync::LazyLock<LangRegistry> =
     std::sync::LazyLock::new(LangRegistry::init);
 
 impl LangRegistry {
     fn init() -> Self {
-        let mut registry = LangRegistry {
+        LangRegistry {
             by_name: HashMap::new(),
             by_ext: HashMap::new(),
             configs: Vec::new(),
-            failed: Vec::new(),
-        };
-        registry.load_plugins();
-
-        let count = registry.configs.len();
-        if count == 0 {
-            eprintln!(
-                "[lang_registry] No language plugins loaded. \
-                 Run `sentrux plugin add-standard` to install standard languages."
-            );
-        } else {
-            eprintln!("[lang_registry] {} language plugins loaded", count);
-        }
-
-        registry
-    }
-
-    /// Load all plugins from ~/.sentrux/plugins/.
-    fn load_plugins(&mut self) {
-        let (plugins, errors) = crate::analysis::plugin::load_all_plugins();
-        for err in &errors {
-            eprintln!("[plugin] Error: {}: {}", err.plugin_dir.display(), err.error);
-            self.failed.push(format!("{}: {}", err.plugin_dir.display(), err.error));
-        }
-        for plugin in plugins {
-            match Query::new(&plugin.grammar, &plugin.query_src) {
-                Ok(query) => {
-                    let idx = self.configs.len();
-                    let name = plugin.name.clone();
-                    let extensions = plugin.extensions.clone();
-                    self.configs.push(PluginLangConfig {
-                        name: plugin.name,
-                        grammar: plugin.grammar,
-                        query,
-                        extensions: plugin.extensions,
-                    });
-                    self.by_name.insert(name, idx);
-                    for ext in extensions {
-                        self.by_ext.insert(ext, idx);
-                    }
-                }
-                Err(e) => {
-                    let msg = format!("{}: query failed: {:?}", plugin.name, e);
-                    eprintln!("[plugin] {}", msg);
-                    self.failed.push(msg);
-                }
-            }
         }
     }
 
@@ -108,9 +60,9 @@ impl LangRegistry {
         self.configs.len()
     }
 
-    /// Failed plugin descriptions (for UI display).
+    /// Failed plugin descriptions (empty — no plugin system).
     pub fn failed(&self) -> &[String] {
-        &self.failed
+        &[]
     }
 }
 
@@ -131,7 +83,7 @@ pub fn all_extensions() -> Vec<&'static str> {
     REGISTRY.all_extensions()
 }
 
-/// Number of loaded language plugins.
+/// Number of loaded language configs.
 pub fn plugin_count() -> usize {
     REGISTRY.count()
 }
@@ -198,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_registry_loads() {
-        // Should not panic even if no plugins are installed
+        // Should not panic; registry initializes empty until Plan 02 adds grammars
         let _ = &*REGISTRY;
     }
 }

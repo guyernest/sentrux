@@ -8,7 +8,6 @@ pub mod breadcrumb;
 pub mod canvas;
 pub mod channels;
 pub mod draw_panels;
-pub mod mcp_server;
 pub mod panels;
 pub mod prefs;
 pub mod progress;

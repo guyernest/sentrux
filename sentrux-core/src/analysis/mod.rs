@@ -12,7 +12,6 @@ pub mod git;
 pub mod graph;
 pub mod lang_registry;
 pub mod parser;
-pub mod plugin;
 pub mod resolver;
 pub mod scanner;
 
