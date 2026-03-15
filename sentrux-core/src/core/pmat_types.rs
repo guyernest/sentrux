@@ -65,7 +65,7 @@ pub struct PmatRepoScore {
     pub total_score: f64,
     pub grade: String,
     #[serde(default)]
-    pub categories: HashMap<String, PmatScoreCategory>,
+    pub categories: std::collections::BTreeMap<String, PmatScoreCategory>,
     #[serde(default)]
     pub recommendations: Vec<serde_json::Value>,
     #[serde(default)]
@@ -148,6 +148,176 @@ pub fn grade_to_t(grade: &str) -> f32 {
         "D"      => 0.18,
         "F"      => 0.00,
         _        => 0.00,
+    }
+}
+
+// ── Graph-metrics types ──────────────────────────────────────────────────
+
+/// A single node entry from `pmat analyze graph-metrics --format json`.
+/// Note: `name` is a bare filename (e.g. "channels.rs"), not a full path.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphMetricsNode {
+    pub name: String,
+    pub degree_centrality: f64,
+    pub betweenness_centrality: f64,
+    pub closeness_centrality: f64,
+    pub pagerank: f64,
+    pub in_degree: u32,
+    pub out_degree: u32,
+}
+
+/// Top-level output from `pmat analyze graph-metrics --format json`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphMetricsOutput {
+    pub nodes: Vec<GraphMetricsNode>,
+    pub total_nodes: u32,
+    pub total_edges: u32,
+    pub density: f64,
+    pub average_degree: f64,
+    pub max_degree: u32,
+    pub connected_components: u32,
+}
+
+/// Aggregated graph-metrics report with filename-based lookup index.
+/// Not Serialize/Deserialize because HashMap key ordering is non-deterministic.
+#[derive(Debug, Clone)]
+pub struct GraphMetricsReport {
+    pub data: GraphMetricsOutput,
+    /// bare filename (e.g. "channels.rs") → index into `data.nodes`
+    pub by_filename: HashMap<String, usize>,
+}
+
+impl GraphMetricsReport {
+    /// Build a `GraphMetricsReport` from raw output, constructing the filename index.
+    pub fn from_output(data: GraphMetricsOutput) -> Self {
+        let mut by_filename = HashMap::with_capacity(data.nodes.len());
+        for (i, n) in data.nodes.iter().enumerate() {
+            by_filename.insert(n.name.clone(), i);
+        }
+        GraphMetricsReport { data, by_filename }
+    }
+}
+
+// ── Coverage types ───────────────────────────────────────────────────────
+
+/// A single coverage metric (lines, functions, etc.) from cargo-llvm-cov.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoverageSummaryMetric {
+    pub count: u32,
+    pub covered: u32,
+    pub percent: f64,
+}
+
+/// Per-file summary from cargo-llvm-cov (lines + functions).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileCoverageSummary {
+    pub lines: CoverageSummaryMetric,
+    pub functions: CoverageSummaryMetric,
+}
+
+/// A single file entry from cargo-llvm-cov JSON output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoverageFileEntry {
+    pub filename: String,
+    pub summary: FileCoverageSummary,
+}
+
+/// A data section from cargo-llvm-cov JSON output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoverageDataSection {
+    pub files: Vec<CoverageFileEntry>,
+}
+
+/// Top-level output from `cargo llvm-cov --json --summary-only`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoverageOutput {
+    pub data: Vec<CoverageDataSection>,
+}
+
+/// Aggregated coverage report with scan-root-relative path lookup index.
+#[derive(Debug, Clone)]
+pub struct CoverageReport {
+    pub files: Vec<CoverageFileEntry>,
+    /// scan-root-relative path → index into `files`
+    pub by_path: HashMap<String, usize>,
+}
+
+impl CoverageReport {
+    /// Build a `CoverageReport` from raw output, stripping the scan_root prefix
+    /// from absolute filenames to produce scan-root-relative keys.
+    ///
+    /// Returns `None` if there is no data section.
+    pub fn from_output(output: CoverageOutput, scan_root: &str) -> Option<Self> {
+        let files = output.data.into_iter().next()?.files;
+        let mut by_path = HashMap::with_capacity(files.len());
+        let root_with_sep = if scan_root.ends_with('/') {
+            scan_root.to_string()
+        } else {
+            format!("{}/", scan_root)
+        };
+        for (i, f) in files.iter().enumerate() {
+            if let Some(rel) = f.filename.strip_prefix(&root_with_sep) {
+                by_path.insert(rel.to_string(), i);
+            }
+        }
+        Some(CoverageReport { files, by_path })
+    }
+}
+
+// ── Clippy types ─────────────────────────────────────────────────────────
+
+/// Per-file clippy warning data: total count + breakdown by category.
+#[derive(Debug, Clone, Default)]
+pub struct FileClippyData {
+    pub total: u32,
+    /// category ("style", "complexity", "correctness", "performance") → count
+    pub by_category: HashMap<String, u32>,
+}
+
+/// Aggregated clippy report from `cargo clippy --message-format=json`.
+#[derive(Debug, Clone)]
+pub struct ClippyReport {
+    /// scan-root-relative path → per-file warning data
+    pub by_file: HashMap<String, FileClippyData>,
+}
+
+/// Map a clippy lint ID to a semantic category.
+///
+/// Categories: "correctness", "performance", "complexity", "style" (default).
+/// Verified against 63 unique lint IDs found in the sentrux workspace.
+pub fn lint_category(lint_id: &str) -> &'static str {
+    match lint_id {
+        // Correctness / suspicious numeric casts
+        "clippy::while_float"
+        | "clippy::unchecked_time_subtraction"
+        | "clippy::cast_possible_truncation"
+        | "clippy::cast_possible_wrap"
+        | "clippy::cast_sign_loss"
+        | "clippy::cast_precision_loss"
+        | "clippy::cast_lossless" => "correctness",
+
+        // Performance — unnecessary allocations and clones
+        "clippy::implicit_clone"
+        | "clippy::redundant_clone"
+        | "clippy::needless_pass_by_value"
+        | "clippy::needless_pass_by_ref_mut"
+        | "clippy::map_unwrap_or"
+        | "clippy::imprecise_flops"
+        | "clippy::suboptimal_flops" => "performance",
+
+        // Complexity — structural complexity
+        "clippy::type_complexity"
+        | "clippy::too_many_arguments"
+        | "clippy::manual_let_else"
+        | "clippy::useless_let_if_seq"
+        | "clippy::map_entry"
+        | "clippy::option_if_let_else"
+        | "clippy::or_fun_call"
+        | "clippy::manual_clamp"
+        | "clippy::branches_sharing_code" => "complexity",
+
+        // Everything else falls into style
+        _ => "style",
     }
 }
 
@@ -302,5 +472,189 @@ mod tests {
         let report = PmatReport::from_tdg(tdg, None);
         let idx = report.by_path["sentrux-core/src/app/channels.rs"];
         assert_eq!(report.tdg.files[idx].grade, "APLus");
+    }
+
+    // ── Graph-metrics types ──────────────────────────────────────────────
+
+    const GRAPH_METRICS_FIXTURE: &str = r#"{
+        "nodes": [
+            {
+                "name": "channels.rs",
+                "degree_centrality": 0.057,
+                "betweenness_centrality": 0.0,
+                "closeness_centrality": 0.0,
+                "pagerank": 0.01136,
+                "in_degree": 4,
+                "out_degree": 1
+            },
+            {
+                "name": "state.rs",
+                "degree_centrality": 0.045,
+                "betweenness_centrality": 0.01,
+                "closeness_centrality": 0.02,
+                "pagerank": 0.00980,
+                "in_degree": 3,
+                "out_degree": 2
+            }
+        ],
+        "total_nodes": 88,
+        "total_edges": 105,
+        "density": 0.027,
+        "average_degree": 2.39,
+        "max_degree": 75,
+        "connected_components": 24
+    }"#;
+
+    #[test]
+    fn graph_metrics_output_deserializes() {
+        let output: GraphMetricsOutput =
+            serde_json::from_str(GRAPH_METRICS_FIXTURE).expect("graph-metrics fixture should deserialize");
+        assert_eq!(output.nodes.len(), 2);
+        assert_eq!(output.total_nodes, 88);
+        assert_eq!(output.total_edges, 105);
+        assert_eq!(output.nodes[0].name, "channels.rs");
+        assert!((output.nodes[0].pagerank - 0.01136).abs() < 1e-6);
+        assert_eq!(output.nodes[0].in_degree, 4);
+    }
+
+    #[test]
+    fn graph_metrics_report_by_filename() {
+        let output: GraphMetricsOutput =
+            serde_json::from_str(GRAPH_METRICS_FIXTURE).expect("fixture should parse");
+        let report = GraphMetricsReport::from_output(output);
+        assert!(report.by_filename.contains_key("channels.rs"),
+            "by_filename should contain 'channels.rs'");
+        assert!(report.by_filename.contains_key("state.rs"),
+            "by_filename should contain 'state.rs'");
+        let idx = report.by_filename["channels.rs"];
+        assert_eq!(report.data.nodes[idx].pagerank, 0.01136);
+    }
+
+    // ── Coverage types ───────────────────────────────────────────────────
+
+    const COVERAGE_FIXTURE: &str = r#"{
+        "data": [
+            {
+                "files": [
+                    {
+                        "filename": "/Users/guy/projects/sentrux/sentrux/sentrux-core/src/app/channels.rs",
+                        "summary": {
+                            "lines": {"count": 100, "covered": 85, "percent": 85.0},
+                            "functions": {"count": 10, "covered": 8, "percent": 80.0}
+                        }
+                    }
+                ]
+            }
+        ]
+    }"#;
+
+    #[test]
+    fn coverage_output_deserializes() {
+        let output: CoverageOutput =
+            serde_json::from_str(COVERAGE_FIXTURE).expect("coverage fixture should deserialize");
+        assert_eq!(output.data.len(), 1);
+        assert_eq!(output.data[0].files.len(), 1);
+        assert!((output.data[0].files[0].summary.lines.percent - 85.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn coverage_report_path_normalization() {
+        let output: CoverageOutput =
+            serde_json::from_str(COVERAGE_FIXTURE).expect("fixture should parse");
+        let scan_root = "/Users/guy/projects/sentrux/sentrux";
+        let report = CoverageReport::from_output(output, scan_root)
+            .expect("should produce a CoverageReport");
+        let key = "sentrux-core/src/app/channels.rs";
+        assert!(report.by_path.contains_key(key),
+            "by_path should have relative key '{}', got: {:?}",
+            key, report.by_path.keys().collect::<Vec<_>>());
+        let idx = report.by_path[key];
+        assert!((report.files[idx].summary.lines.percent - 85.0).abs() < 0.01);
+    }
+
+    // ── Clippy types ─────────────────────────────────────────────────────
+
+    const CLIPPY_NDJSON_FIXTURE: &str = concat!(
+        r#"{"reason":"compiler-artifact","package_id":"sentrux-core 0.1.0"}"#, "\n",
+        r#"{"reason":"compiler-message","message":{"level":"warning","code":{"code":"clippy::doc_markdown","explanation":null},"spans":[{"file_name":"sentrux-core/src/analysis/parser/strings.rs","is_primary":true}],"children":[]}}"#, "\n",
+        r#"{"reason":"compiler-message","message":{"level":"warning","code":{"code":"clippy::cast_possible_truncation","explanation":null},"spans":[{"file_name":"sentrux-core/src/analysis/parser/strings.rs","is_primary":true}],"children":[]}}"#, "\n",
+        r#"{"reason":"compiler-message","message":{"level":"warning","code":{"code":"clippy::implicit_clone","explanation":null},"spans":[{"file_name":"sentrux-core/src/renderer/colors.rs","is_primary":true}],"children":[]}}"#, "\n",
+        r#"{"reason":"compiler-message","message":{"level":"error","code":{"code":"E0308","explanation":null},"spans":[{"file_name":"sentrux-core/src/lib.rs","is_primary":true}],"children":[]}}"#, "\n"
+    );
+
+    fn build_clippy_report_from_fixture() -> ClippyReport {
+        let mut by_file: HashMap<String, FileClippyData> = HashMap::new();
+        for line in CLIPPY_NDJSON_FIXTURE.lines() {
+            if line.is_empty() {
+                continue;
+            }
+            let obj: serde_json::Value = match serde_json::from_str(line) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if obj["reason"] != "compiler-message" {
+                continue;
+            }
+            let msg = &obj["message"];
+            if msg["level"] != "warning" {
+                continue;
+            }
+            let lint_id = match msg["code"]["code"].as_str() {
+                Some(s) if !s.is_empty() => s.to_string(),
+                _ => continue,
+            };
+            let spans = match msg["spans"].as_array() {
+                Some(s) => s,
+                None => continue,
+            };
+            for span in spans {
+                if span["is_primary"].as_bool() != Some(true) {
+                    continue;
+                }
+                let fname = match span["file_name"].as_str() {
+                    Some(s) if !s.is_empty() => s.to_string(),
+                    _ => continue,
+                };
+                let entry = by_file.entry(fname).or_default();
+                entry.total += 1;
+                *entry.by_category.entry(lint_category(&lint_id).to_string()).or_insert(0) += 1;
+            }
+        }
+        ClippyReport { by_file }
+    }
+
+    #[test]
+    fn clippy_report_from_ndjson() {
+        let report = build_clippy_report_from_fixture();
+        // strings.rs should have 2 warnings (doc_markdown=style + cast_possible_truncation=correctness)
+        let strings_data = report.by_file.get("sentrux-core/src/analysis/parser/strings.rs")
+            .expect("strings.rs should be in report");
+        assert_eq!(strings_data.total, 2, "strings.rs should have 2 warnings");
+        assert_eq!(strings_data.by_category.get("style"), Some(&1));
+        assert_eq!(strings_data.by_category.get("correctness"), Some(&1));
+        // colors.rs should have 1 warning (implicit_clone=performance)
+        let colors_data = report.by_file.get("sentrux-core/src/renderer/colors.rs")
+            .expect("colors.rs should be in report");
+        assert_eq!(colors_data.total, 1);
+        assert_eq!(colors_data.by_category.get("performance"), Some(&1));
+        // lib.rs should NOT be in report (it was an error, not a warning)
+        assert!(!report.by_file.contains_key("sentrux-core/src/lib.rs"),
+            "error-level diagnostics should not be in clippy report");
+    }
+
+    #[test]
+    fn lint_category_mapping() {
+        // Correctness
+        assert_eq!(lint_category("clippy::cast_possible_truncation"), "correctness");
+        assert_eq!(lint_category("clippy::cast_sign_loss"), "correctness");
+        // Performance
+        assert_eq!(lint_category("clippy::implicit_clone"), "performance");
+        assert_eq!(lint_category("clippy::needless_pass_by_value"), "performance");
+        // Complexity
+        assert_eq!(lint_category("clippy::type_complexity"), "complexity");
+        assert_eq!(lint_category("clippy::too_many_arguments"), "complexity");
+        // Style (default)
+        assert_eq!(lint_category("clippy::doc_markdown"), "style");
+        assert_eq!(lint_category("clippy::some_unknown_lint"), "style");
     }
 }
