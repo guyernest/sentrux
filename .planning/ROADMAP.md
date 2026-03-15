@@ -12,7 +12,7 @@ Sentrux ships four phases that transform an existing treemap visualizer into a t
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Cleanup** - Remove MCP server, plugin system, and non-Rust/TS/JS language support
+- [x] **Phase 1: Cleanup** - Remove MCP server, plugin system, and non-Rust/TS/JS language support (completed 2026-03-15)
 - [ ] **Phase 2: PMAT Integration** - Integrate PMAT as analysis engine; display TDG grades and health/mutation panels
 - [ ] **Phase 3: Git Diff Overlay** - Color-code treemap nodes by git change recency with selectable time windows
 - [ ] **Phase 4: GSD Phase Overlay** - Color-code treemap nodes by GSD planning phase; complete triple overlay system
@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. No plugin loading code executes at startup; grammar plugin files are absent from the build
   3. Sentrux correctly scans Rust, TypeScript, and JavaScript files and silently skips all other file types without error
   4. The binary builds cleanly with no dead-code warnings from removed subsystems
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Remove MCP server, plugin system, whatif module, and evolution alias
@@ -76,7 +76,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Cleanup | 1/2 | In Progress|  |
+| 1. Cleanup | 2/2 | Complete   | 2026-03-15 |
 | 2. PMAT Integration | 0/TBD | Not started | - |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |

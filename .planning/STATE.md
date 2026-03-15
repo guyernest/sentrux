@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 01-cleanup-01-PLAN.md
-last_updated: "2026-03-15T00:56:22.283Z"
+stopped_at: Completed 01-cleanup-02-PLAN.md
+last_updated: "2026-03-15T01:03:27.037Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 50
 ---
 
@@ -51,6 +51,7 @@ Progress: [█████░░░░░] 50%
 
 *Updated after each plan completion*
 | Phase 01-cleanup P01 | 5 | 2 tasks | 11 files |
+| Phase 01-cleanup P02 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,9 @@ Recent decisions affecting current work:
 - [Pre-Phase 1]: GSD overlay has highest complexity — needs GSD plan reader + file path normalization
 - [Phase 01-cleanup]: lang_registry.rs rewritten as empty static registry to break plugin::load_all_plugins() dependency; Plan 02 will populate with compiled-in Rust/TS/JS grammars
 - [Phase 01-cleanup]: dirs crate removed by replacing dirs::home_dir() in update_check.rs with HOME/USERPROFILE env var lookup
+- [Phase 01-cleanup]: Language::new(LanguageFn) pattern used for tree-sitter 0.25 grammar compilation; tsx maps to LANGUAGE_TYPESCRIPT
+- [Phase 01-cleanup]: PluginLangConfig renamed to LangConfig to remove plugin terminology from the static registry
+- [Phase 01-cleanup]: Pre-existing oracle failures (27) for removed languages are expected; 3-language binary is CLEN-03 complete
 
 ### Pending Todos
 
@@ -78,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T00:56:22.281Z
-Stopped at: Completed 01-cleanup-01-PLAN.md
+Last session: 2026-03-15T01:03:27.035Z
+Stopped at: Completed 01-cleanup-02-PLAN.md
 Resume file: None
