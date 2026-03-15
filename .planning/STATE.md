@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-15T15:59:27.161Z"
+stopped_at: Completed 04-gsd-phase-overlay 04-01-PLAN.md
+last_updated: "2026-03-15T20:05:29.798Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 13
   percent: 50
 ---
 
@@ -62,6 +62,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03-git-diff-overlay P01 | 7 | 2 tasks | 10 files |
 | Phase 03-git-diff-overlay P02 | 4 | 2 tasks | 6 files |
 | Phase 03-git-diff-overlay P03 | 50 | 2 tasks | 8 files |
+| Phase 04-gsd-phase-overlay P01 | 35 | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 03-git-diff-overlay]: Auto-trigger guards !state.scanning to prevent triggering git diff walk during a full scan
 - [Phase 03-git-diff-overlay]: NO_DATA_GRAY constant extracted to colors.rs (was magic literal duplicated in 3 files)
 - [Phase 03-git-diff-overlay]: SinceLastTag with no tags returns empty report instead of unbounded walk — prevents freeze on fresh repos
+- [Phase 04-gsd-phase-overlay]: DiffWindow::CommitRange adds String fields making Copy impossible; preset_slice() OnceLock fn replaces PRESETS const; callers updated to .clone()
+- [Phase 04-gsd-phase-overlay]: ColorMode::GsdPhase serializes to GsdPhase (PascalCase serde rename) consistent with GitDiff pattern
+- [Phase 04-gsd-phase-overlay]: color_by_gsd_phase uses find_directory_match() from gsd_phase_adapter for directory prefix entries; NO_DATA_GRAY for unassociated files
 
 ### Pending Todos
 
@@ -121,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T15:59:27.154Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-gsd-phase-overlay/04-CONTEXT.md
+Last session: 2026-03-15T20:05:29.796Z
+Stopped at: Completed 04-gsd-phase-overlay 04-01-PLAN.md
+Resume file: None

@@ -33,10 +33,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### GSD Phase Overlay
 
-- [ ] **GSDP-01**: User can see treemap nodes color-coded by which GSD phase touches them
+- [x] **GSDP-01**: User can see treemap nodes color-coded by which GSD phase touches them
 - [ ] **GSDP-02**: Past phases (completed) use a distinct color scheme from future phases (planned)
-- [ ] **GSDP-03**: Phase information is read from `.planning/` directory files (ROADMAP.md, plan files)
-- [ ] **GSDP-04**: Files not associated with any phase are visually muted
+- [x] **GSDP-03**: Phase information is read from `.planning/` directory files (ROADMAP.md, plan files)
+- [x] **GSDP-04**: Files not associated with any phase are visually muted
 - [ ] **GSDP-05**: Hovering a colored node shows which phase and its goal
 
 ### PMAT Code Rank
@@ -112,10 +112,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GDIT-03 | Phase 3 | Complete |
 | GDIT-04 | Phase 3 | Complete |
 | GDIT-05 | Phase 3 | Complete |
-| GSDP-01 | Phase 4 | Pending |
+| GSDP-01 | Phase 4 | Complete |
 | GSDP-02 | Phase 4 | Pending |
-| GSDP-03 | Phase 4 | Pending |
-| GSDP-04 | Phase 4 | Pending |
+| GSDP-03 | Phase 4 | Complete |
+| GSDP-04 | Phase 4 | Complete |
 | GSDP-05 | Phase 4 | Pending |
 | CLEN-01 | Phase 1 | Complete |
 | CLEN-02 | Phase 1 | Complete |
