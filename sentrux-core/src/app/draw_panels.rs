@@ -463,13 +463,17 @@ pub(crate) fn draw_gsd_phase_navigator(ui: &mut egui::Ui, state: &mut crate::app
             text_pos,
             egui::Align2::LEFT_CENTER,
             &short_label,
-            font_id.clone(),
+            font_id,
             label_color,
         );
         if w > 100.0 {
-            // Show phase name below the number
-            let name_preview: String = phase.name.chars().take(12).collect();
-            let name_text = if phase.name.len() > 12 { format!("{}..", name_preview) } else { name_preview };
+            // Show phase name below the number (truncate to 12 chars)
+            let name_text = if phase.name.chars().count() > 12 {
+                let truncated: String = phase.name.chars().take(12).collect();
+                format!("{truncated}..")
+            } else {
+                phase.name.clone()
+            };
             painter.text(
                 egui::pos2(x + 4.0, bar_rect.center().y + 5.0),
                 egui::Align2::LEFT_CENTER,
@@ -495,17 +499,12 @@ pub(crate) fn draw_gsd_phase_navigator(ui: &mut egui::Ui, state: &mut crate::app
         }
 
         // Hover tooltip
-        let status_label = match phase.status {
-            PhaseStatus::Completed => "Completed",
-            PhaseStatus::InProgress => "In Progress",
-            PhaseStatus::Planned => "Planned",
-        };
         let tooltip = format!(
             "Phase {}: {}\nGoal: {}\nStatus: {}\nFiles: {}",
             phase.number,
             phase.name,
             phase.goal,
-            status_label,
+            phase.status.label(),
             phase.files.len(),
         );
         seg_response.on_hover_text(egui::RichText::new(tooltip).monospace().size(10.0));
@@ -518,6 +517,8 @@ pub(crate) fn draw_gsd_phase_navigator(ui: &mut egui::Ui, state: &mut crate::app
     if let Some(window) = new_git_diff_window {
         state.git_diff_window = window;
         state.git_diff_requested = new_git_diff_requested;
+        // Switch to GitDiff mode so the user sees the phase's changes on the treemap
+        state.color_mode = crate::layout::types::ColorMode::GitDiff;
     }
 }
 

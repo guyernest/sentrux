@@ -41,27 +41,14 @@ fn draw_left_info(ui: &mut egui::Ui, state: &AppState) {
         // In GsdPhase mode: append phase info to hover display
         if state.color_mode == crate::layout::types::ColorMode::GsdPhase {
             if let Some(report) = &state.gsd_phase_report {
-                if let Some(&phase_idx) = report.by_file.get(path.as_str()) {
-                    if let Some(phase) = report.phases.get(phase_idx) {
-                        use crate::core::pmat_types::PhaseStatus;
-                        let status_label = match phase.status {
-                            PhaseStatus::Completed => "Completed",
-                            PhaseStatus::InProgress => "In Progress",
-                            PhaseStatus::Planned => "Planned",
-                        };
-                        let status_color = match phase.status {
-                            PhaseStatus::Completed => egui::Color32::from_rgb(76, 153, 76),
-                            PhaseStatus::InProgress => egui::Color32::from_rgb(220, 165, 32),
-                            PhaseStatus::Planned => egui::Color32::from_rgb(70, 130, 180),
-                        };
-                        ui.colored_label(
-                            status_color,
-                            egui::RichText::new(format!(
-                                "Phase {}: {} ({})",
-                                phase.number, phase.name, status_label
-                            )).monospace().weak(),
-                        );
-                    }
+                if let Some(phase) = report.phase_for_file(path.as_str()) {
+                    ui.colored_label(
+                        crate::renderer::colors::gsd_phase_color(phase.status),
+                        egui::RichText::new(format!(
+                            "Phase {}: {} ({})",
+                            phase.number, phase.name, phase.status.label()
+                        )).monospace().weak(),
+                    );
                 }
             }
         }

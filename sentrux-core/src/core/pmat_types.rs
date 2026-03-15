@@ -469,6 +469,17 @@ pub enum PhaseStatus {
     Planned,
 }
 
+impl PhaseStatus {
+    /// Human-readable label for this status.
+    pub fn label(self) -> &'static str {
+        match self {
+            PhaseStatus::Completed => "Completed",
+            PhaseStatus::InProgress => "In Progress",
+            PhaseStatus::Planned => "Planned",
+        }
+    }
+}
+
 /// Metadata for a single GSD planning phase.
 #[derive(Debug, Clone)]
 pub struct PhaseInfo {

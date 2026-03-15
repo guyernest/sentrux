@@ -570,9 +570,9 @@ impl SentruxApp {
         self.state.git_diff_report = None;
         self.state.git_diff_running = false;
         // Reset GSD phase on new scan — old phase data is stale for new directory
-        // Do NOT reset selected_phase_idx (user selection persists across scans)
         self.state.gsd_phase_report = None;
         self.state.gsd_phase_running = false;
+        self.state.selected_phase_idx = None;
         self.state.community_highlight = None;
         self.state.impact_files = None;
         self.state.top_connections_cache = None;

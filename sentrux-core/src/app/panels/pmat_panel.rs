@@ -238,7 +238,6 @@ fn draw_git_diff_section(ui: &mut Ui, state: &AppState, path: &str) {
 /// If no association, shows an actionable "not in any phase" message in amber.
 /// Only rendered when ColorMode::GsdPhase is active.
 fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
-    use crate::core::pmat_types::PhaseStatus;
     egui::CollapsingHeader::new(
         egui::RichText::new("Phase History").monospace().size(9.0).strong(),
     )
@@ -254,7 +253,7 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
             );
             return;
         };
-        let Some(&phase_idx) = report.by_file.get(path) else {
+        let Some(phase) = report.phase_for_file(path) else {
             // Not in any phase: actionable amber message
             ui.label(
                 egui::RichText::new("Not referenced in any GSD phase plan. Consider whether this file needs review.")
@@ -264,25 +263,8 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
             );
             return;
         };
-        let Some(phase) = report.phases.get(phase_idx) else {
-            ui.label(
-                egui::RichText::new("Phase data missing")
-                    .monospace()
-                    .size(9.0)
-                    .color(ui.visuals().weak_text_color()),
-            );
-            return;
-        };
-        let status_color = match phase.status {
-            PhaseStatus::Completed => crate::renderer::colors::STATUS_PASS,
-            PhaseStatus::InProgress => egui::Color32::from_rgb(220, 165, 32),
-            PhaseStatus::Planned => egui::Color32::from_rgb(70, 130, 180),
-        };
-        let status_label = match phase.status {
-            PhaseStatus::Completed => "Completed",
-            PhaseStatus::InProgress => "In Progress",
-            PhaseStatus::Planned => "Planned",
-        };
+        let status_color = crate::renderer::colors::gsd_phase_color(phase.status);
+        let status_label = phase.status.label();
 
         // Show "Phase {number}: {name}" with status color
         ui.horizontal(|ui| {
@@ -305,10 +287,10 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
         });
 
         // Multi-phase history: find all phases this file appears in (not just by_file primary)
+        let primary_number = &phase.number;
         let other_phases: Vec<&str> = report.phases.iter()
-            .enumerate()
-            .filter(|(i, ph)| *i != phase_idx && ph.files.iter().any(|f| f == path))
-            .map(|(_, ph)| ph.number.as_str())
+            .filter(|ph| ph.number != *primary_number && ph.files.iter().any(|f| f == path))
+            .map(|ph| ph.number.as_str())
             .collect();
 
         if !other_phases.is_empty() {
