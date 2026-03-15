@@ -501,8 +501,7 @@ impl SentruxApp {
         self.state.evolution_report = None;
         self.state.test_gap_report = None;
         self.state.rule_check_result = None;
-        self.state.whatif_cache = None;
-        self.state.impact_files = None;
+self.state.impact_files = None;
         self.state.dsm_cache = None;
         self.state.top_connections_cache = None;
         self.state.drill_stack.clear();

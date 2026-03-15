@@ -14,4 +14,3 @@ pub(crate) mod metrics_panel;
 pub(crate) mod rules_display;
 pub(crate) mod testgap_display;
 pub(crate) mod ui_helpers;
-pub(crate) mod whatif_display;

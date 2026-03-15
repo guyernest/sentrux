@@ -18,14 +18,8 @@ pub mod grading;
 pub mod stability;
 pub mod testgap;
 pub mod types;
-pub mod whatif;
 
 pub use types::*;
-
-// ── Re-exports for backward compatibility ──
-// External code (app/mcp_handlers_evo.rs) imports crate::metrics::evolution.
-// After restructure, evolution lives in crate::metrics::evo.
-pub use evo as evolution;
 
 #[cfg(test)]
 pub(crate) mod test_helpers;

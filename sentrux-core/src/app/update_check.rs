@@ -51,8 +51,15 @@ pub fn record_gate_run() {
 
 // ── Cache ──
 
+fn home_dir() -> Option<PathBuf> {
+    // Use HOME env var (Unix) or USERPROFILE (Windows) — avoids the dirs crate dependency
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+}
+
 fn cache_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".sentrux").join("last_update_check"))
+    home_dir().map(|h| h.join(".sentrux").join("last_update_check"))
 }
 
 fn should_check() -> bool {

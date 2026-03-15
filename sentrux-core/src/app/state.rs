@@ -168,9 +168,7 @@ pub struct AppState {
     pub test_gap_report: Option<TestGapReport>,
     /// Architecture rules check result
     pub rule_check_result: Option<RuleCheckResult>,
-    /// Cached what-if simulation result for the selected file
-    pub(crate) whatif_cache: Option<super::panels::whatif_display::WhatIfCache>,
-    /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
+/// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
     pub impact_files: Option<Arc<HashSet<String>>>,
 
     /// BUG 2 fix: flag set by toolbar when "Open Folder" is clicked.
@@ -280,7 +278,6 @@ impl AppState {
             evolution_report: None,
             test_gap_report: None,
             rule_check_result: None,
-            whatif_cache: None,
             impact_files: None,
             folder_picker_requested: false,
             hidden_paths: Arc::new(HashSet::new()),

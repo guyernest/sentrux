@@ -12,7 +12,6 @@ use super::arch_display::draw_arch_section;
 use super::evolution_display::draw_evolution_section;
 use super::testgap_display::draw_testgap_section;
 use super::rules_display::draw_rules_section;
-use super::whatif_display::draw_whatif_section;
 use crate::core::settings::ThemeConfig;
 
 /// Draw the metrics panel (left side) showing all analysis results.
@@ -81,15 +80,6 @@ fn draw_metrics_sections(ui: &mut egui::Ui, state: &mut AppState, tc: &ThemeConf
     if let Some(rules) = &state.rule_check_result {
         draw_rules_section(ui, rules, tc);
         draw_sep(ui, tc, 4.0);
-    }
-
-    // What-if: only shown for pro users, hidden entirely for free
-    if let (Some(sel), Some(snap)) = (&state.selected_path, &state.snapshot) {
-        if tier.is_pro() {
-            let sel_clone = sel.clone();
-            let snap_clone = snap.clone();
-            draw_whatif_section(ui, &sel_clone, &snap_clone, &mut state.whatif_cache, tc);
-        }
     }
 
     if state.health_report.is_none() && state.arch_report.is_none() {
