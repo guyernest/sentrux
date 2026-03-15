@@ -3,14 +3,11 @@
 //! All logic lives in `sentrux-core`. This crate is just the entry point
 //! that wires together the three modes:
 //! - GUI mode (default): interactive treemap/blueprint visualizer
-//! - Check mode (`sentrux check [path]`): CLI architectural rules enforcement
-//! - Gate mode (`sentrux gate [--save] [path]`): structural regression testing
+//! - Check mode (`sentrux check [path]`): delegates to `pmat quality-gate`
+//! - Gate mode (`sentrux gate [--save] [path]`): delegates to `pmat tdg --min-grade`
 
 use clap::{Parser, Subcommand};
-use sentrux_core::analysis;
 use sentrux_core::app;
-use sentrux_core::core;
-use sentrux_core::metrics;
 
 // ---------------------------------------------------------------------------
 // CLI definition
@@ -43,16 +40,16 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Enforce architectural rules defined in .sentrux/rules.toml
+    /// Run PMAT quality gate on the project (delegates to `pmat quality-gate`)
     Check {
         /// Directory to check
         #[arg(default_value = ".")]
         path: String,
     },
 
-    /// Structural regression gate — compare against a saved baseline
+    /// Run PMAT TDG grade gate on the project (delegates to `pmat tdg --min-grade`)
     Gate {
-        /// Save current metrics as the new baseline
+        /// Note: --save is not supported with PMAT gate. Use `pmat config` to set grade thresholds.
         #[arg(long)]
         save: bool,
 
@@ -95,175 +92,69 @@ fn main() -> eframe::Result<()> {
 }
 
 // ---------------------------------------------------------------------------
-// Check
+// Check — delegates to pmat quality-gate
 // ---------------------------------------------------------------------------
 
-/// Run architectural rules check from CLI. Returns exit code.
+/// Run PMAT quality gate from CLI. Returns exit code.
 fn run_check(path: &str) -> i32 {
-    let root = std::path::Path::new(path);
-    if !root.is_dir() {
-        eprintln!("Error: not a directory: {path}");
-        return 1;
-    }
+    eprintln!("[check] Running PMAT quality gate on {path}");
 
-    let config = match metrics::rules::RulesConfig::try_load(root) {
-        Some(c) => c,
-        None => {
-            eprintln!("No .sentrux/rules.toml found in {path}");
-            eprintln!("Create one to define architectural constraints.");
-            return 1;
-        }
-    };
+    let status = std::process::Command::new("pmat")
+        .args(["quality-gate", "--format", "json", "--fail-on-violation", "--path", path])
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status();
 
-    eprintln!("Scanning {path}...");
-    let result = match analysis::scanner::scan_directory(
-        path, None, None,
-        &cli_scan_limits(),
-    ) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Scan failed: {e}");
-            return 1;
-        }
-    };
-
-    let health = metrics::compute_health(&result.snapshot);
-    let arch_report = metrics::arch::compute_arch(&result.snapshot);
-    let check = metrics::rules::check_rules(&config, &health, &arch_report, &result.snapshot.import_graph);
-
-    print_check_results(&check, &health, &arch_report)
-}
-
-/// Print check results and return exit code (0 = pass, 1 = violations).
-fn print_check_results(
-    check: &metrics::rules::RuleCheckResult,
-    health: &metrics::HealthReport,
-    arch_report: &metrics::arch::ArchReport,
-) -> i32 {
-    println!("sentrux check — {} rules checked\n", check.rules_checked);
-    println!("Structure grade: {}  Architecture grade: {}\n",
-        health.grade, arch_report.arch_grade);
-
-    if check.violations.is_empty() {
-        println!("✓ All rules pass");
-        0
-    } else {
-        for v in &check.violations {
-            let icon = match v.severity {
-                metrics::rules::Severity::Error => "✗",
-                metrics::rules::Severity::Warning => "⚠",
-            };
-            println!("{icon} [{:?}] {}: {}", v.severity, v.rule, v.message);
-            for f in &v.files {
-                println!("    {f}");
-            }
-        }
-        println!("\n✗ {} violation(s) found", check.violations.len());
-        1
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Gate
-// ---------------------------------------------------------------------------
-
-/// Run structural regression gate from CLI. Returns exit code.
-fn run_gate(path: &str, save_mode: bool) -> i32 {
-    let root = std::path::Path::new(path);
-    if !root.is_dir() {
-        eprintln!("Error: not a directory: {path}");
-        return 1;
-    }
-
-    let baseline_path = root.join(".sentrux").join("baseline.json");
-
-    eprintln!("Scanning {path}...");
-    let result = match analysis::scanner::scan_directory(
-        path, None, None,
-        &cli_scan_limits(),
-    ) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Scan failed: {e}");
-            return 1;
-        }
-    };
-
-    let health = metrics::compute_health(&result.snapshot);
-    let arch_report = metrics::arch::compute_arch(&result.snapshot);
-
-    if save_mode {
-        gate_save(&baseline_path, &health, &arch_report)
-    } else {
-        gate_compare(&baseline_path, &health, &arch_report)
-    }
-}
-
-fn gate_save(
-    baseline_path: &std::path::Path,
-    health: &metrics::HealthReport,
-    arch_report: &metrics::arch::ArchReport,
-) -> i32 {
-    if let Some(parent) = baseline_path.parent() {
-        if let Err(e) = std::fs::create_dir_all(parent) {
-            eprintln!("Failed to create directory {}: {e}", parent.display());
-            return 1;
-        }
-    }
-    let baseline = metrics::arch::ArchBaseline::from_health(health);
-    match baseline.save(baseline_path) {
-        Ok(()) => {
-            println!("Baseline saved to {}", baseline_path.display());
-            println!("Structure grade: {}  Architecture grade: {}",
-                health.grade, arch_report.arch_grade);
-            println!("\nRun `sentrux gate` after making changes to compare.");
+    match status {
+        Ok(s) if s.success() => {
+            eprintln!("[check] Quality gate passed");
             0
         }
+        Ok(s) => {
+            eprintln!("[check] Quality gate failed (exit {})", s.code().unwrap_or(-1));
+            1
+        }
         Err(e) => {
-            eprintln!("Failed to save baseline: {e}");
+            eprintln!("[check] Failed to run pmat: {e}");
+            eprintln!("[check] Install PMAT: cargo install pmat");
             1
         }
     }
 }
 
-fn gate_compare(
-    baseline_path: &std::path::Path,
-    health: &metrics::HealthReport,
-    arch_report: &metrics::arch::ArchReport,
-) -> i32 {
-    let baseline = match metrics::arch::ArchBaseline::load(baseline_path) {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("Failed to load baseline at {}: {e}", baseline_path.display());
-            eprintln!("Run `sentrux gate --save` first to create one.");
-            return 1;
-        }
-    };
+// ---------------------------------------------------------------------------
+// Gate — delegates to pmat tdg --min-grade
+// ---------------------------------------------------------------------------
 
-    let diff = baseline.diff(health);
-
-    println!("sentrux gate — structural regression check\n");
-    println!("Structure:    {} → {}  Architecture: {}",
-        diff.structure_grade_before, diff.structure_grade_after,
-        arch_report.arch_grade);
-    println!("Coupling:     {:.2} → {:.2}", diff.coupling_before, diff.coupling_after);
-    println!("Cycles:       {} → {}", diff.cycles_before, diff.cycles_after);
-    println!("God files:    {} → {}", diff.god_files_before, diff.god_files_after);
-
-    if !arch_report.distance_metrics.is_empty() {
-        println!("\nDistance from Main Sequence: {:.2} (grade {})",
-            arch_report.avg_distance, arch_report.distance_grade);
+/// Run PMAT TDG grade gate from CLI. Returns exit code.
+fn run_gate(path: &str, save_mode: bool) -> i32 {
+    if save_mode {
+        eprintln!("[gate] Note: --save is not supported with PMAT gate. Use `pmat config` to set grade thresholds.");
     }
 
-    if diff.degraded {
-        println!("\n✗ DEGRADED");
-        for v in &diff.violations {
-            println!("  ✗ {v}");
+    eprintln!("[gate] Running PMAT TDG grade gate on {path}");
+
+    // Default minimum grade: C (configurable in future)
+    let status = std::process::Command::new("pmat")
+        .args(["tdg", "--min-grade", "C", "--format", "json", "--path", path])
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            eprintln!("[gate] Grade gate passed");
+            0
         }
-        1
-    } else {
-        println!("\n✓ No degradation detected");
-        0
+        Ok(s) => {
+            eprintln!("[gate] Grade gate failed (exit {})", s.code().unwrap_or(-1));
+            1
+        }
+        Err(e) => {
+            eprintln!("[gate] Failed to run pmat: {e}");
+            eprintln!("[gate] Install PMAT: cargo install pmat");
+            1
+        }
     }
 }
 
@@ -375,17 +266,4 @@ fn run_gui(path: Option<String>) -> eframe::Result<()> {
         }
     }
     Ok(())
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn cli_scan_limits() -> analysis::scanner::common::ScanLimits {
-    let s = core::settings::Settings::default();
-    analysis::scanner::common::ScanLimits {
-        max_file_size_kb: s.max_file_size_kb,
-        max_parse_size_kb: s.max_parse_size_kb,
-        max_call_targets: s.max_call_targets,
-    }
 }
