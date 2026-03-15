@@ -42,19 +42,19 @@ Requirements for initial release. Each maps to roadmap phases.
 ### PMAT Code Rank
 
 - [x] **RANK-01**: PMAT code rank data (PageRank, centrality) is computed via `pmat analyze graph-metrics` subprocess
-- [ ] **RANK-02**: File detail panel shows PageRank score, centrality measures, and community assignment for selected file
+- [x] **RANK-02**: File detail panel shows PageRank score, centrality measures, and community assignment for selected file
 - [x] **RANK-03**: A new ColorMode variant colors treemap nodes by architectural importance (PageRank rank)
 
 ### Test Coverage
 
 - [x] **COV-01**: Test coverage data is collected via `cargo llvm-cov` subprocess and parsed into per-file percentages
-- [ ] **COV-02**: File detail panel shows line coverage percentage for selected file
+- [x] **COV-02**: File detail panel shows line coverage percentage for selected file
 - [x] **COV-03**: A new ColorMode variant colors treemap nodes by test coverage (green = well-covered, red = uncovered)
 
 ### Clippy Analysis
 
 - [x] **CLIP-01**: Clippy warnings (pedantic + selected nursery lints) are collected via `cargo clippy` subprocess and counted per-file
-- [ ] **CLIP-02**: File detail panel shows clippy warning count and categories for selected file
+- [x] **CLIP-02**: File detail panel shows clippy warning count and categories for selected file
 
 ### Cleanup
 
@@ -122,13 +122,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLEN-03 | Phase 1 | Complete |
 | CLEN-04 | Phase 2 | Complete |
 | RANK-01 | Phase 2.1 | Complete |
-| RANK-02 | Phase 2.1 | Pending |
+| RANK-02 | Phase 2.1 | Complete |
 | RANK-03 | Phase 2.1 | Complete |
 | COV-01 | Phase 2.1 | Complete |
-| COV-02 | Phase 2.1 | Pending |
+| COV-02 | Phase 2.1 | Complete |
 | COV-03 | Phase 2.1 | Complete |
 | CLIP-01 | Phase 2.1 | Complete |
-| CLIP-02 | Phase 2.1 | Pending |
+| CLIP-02 | Phase 2.1 | Complete |
 
 **Coverage:**
 - v1 requirements: 24 total
