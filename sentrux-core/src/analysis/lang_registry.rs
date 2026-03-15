@@ -1,14 +1,12 @@
 //! Language registry — maps file extensions to tree-sitter grammars and queries.
 //!
-//! Currently an empty registry (no grammars compiled in). Plan 02 will replace
-//! this with a static registry of compiled-in Rust, TypeScript, and JavaScript
-//! grammars using tree-sitter-rust, tree-sitter-typescript, and
-//! tree-sitter-javascript crates.
+//! Static registry with compiled-in Rust, TypeScript, and JavaScript grammars.
+//! All other file types are silently skipped (get_grammar_and_query returns None).
 
-use std::collections::HashMap;
+use std::sync::LazyLock;
 use tree_sitter::{Language, Query};
 
-/// Configuration for a language.
+/// Configuration for a compiled-in language.
 pub struct PluginLangConfig {
     /// Language name (owned)
     pub name: String,
@@ -20,39 +18,73 @@ pub struct PluginLangConfig {
     pub extensions: Vec<String>,
 }
 
-/// Central registry mapping language names and file extensions to configs.
+/// Static 3-language registry with compiled-in grammars.
 pub struct LangRegistry {
-    by_name: HashMap<String, usize>,
-    by_ext: HashMap<String, usize>,
     configs: Vec<PluginLangConfig>,
 }
 
-/// Global singleton — currently empty; Plan 02 will populate with compiled-in grammars.
-static REGISTRY: std::sync::LazyLock<LangRegistry> =
-    std::sync::LazyLock::new(LangRegistry::init);
-
 impl LangRegistry {
     fn init() -> Self {
-        LangRegistry {
-            by_name: HashMap::new(),
-            by_ext: HashMap::new(),
-            configs: Vec::new(),
+        let mut configs = Vec::new();
+
+        // Rust
+        {
+            let grammar = Language::new(tree_sitter_rust::LANGUAGE);
+            let source = include_str!("../queries/rust/tags.scm");
+            let query = Query::new(&grammar, source)
+                .expect("Failed to compile Rust tags query");
+            configs.push(PluginLangConfig {
+                name: "rust".into(),
+                grammar,
+                query,
+                extensions: vec!["rs".into()],
+            });
         }
+
+        // TypeScript (.ts and .tsx both use the TypeScript grammar)
+        {
+            let grammar = Language::new(tree_sitter_typescript::LANGUAGE_TYPESCRIPT);
+            let source = include_str!("../queries/typescript/tags.scm");
+            let query = Query::new(&grammar, source)
+                .expect("Failed to compile TypeScript tags query");
+            configs.push(PluginLangConfig {
+                name: "typescript".into(),
+                grammar,
+                query,
+                extensions: vec!["ts".into(), "tsx".into()],
+            });
+        }
+
+        // JavaScript (.js, .jsx, .mjs, .cjs)
+        {
+            let grammar = Language::new(tree_sitter_javascript::LANGUAGE);
+            let source = include_str!("../queries/javascript/tags.scm");
+            let query = Query::new(&grammar, source)
+                .expect("Failed to compile JavaScript tags query");
+            configs.push(PluginLangConfig {
+                name: "javascript".into(),
+                grammar,
+                query,
+                extensions: vec!["js".into(), "jsx".into(), "mjs".into(), "cjs".into()],
+            });
+        }
+
+        LangRegistry { configs }
     }
 
     /// Look up by language name.
     pub fn get(&self, name: &str) -> Option<&PluginLangConfig> {
-        self.by_name.get(name).map(|&idx| &self.configs[idx])
+        self.configs.iter().find(|c| c.name == name)
     }
 
     /// Look up by file extension (without dot).
     pub fn get_by_ext(&self, ext: &str) -> Option<&PluginLangConfig> {
-        self.by_ext.get(ext).map(|&idx| &self.configs[idx])
+        self.configs.iter().find(|c| c.extensions.iter().any(|e| e == ext))
     }
 
     /// All registered file extensions.
     pub fn all_extensions(&self) -> Vec<&str> {
-        self.by_ext.keys().map(|s| s.as_str()).collect()
+        self.configs.iter().flat_map(|c| c.extensions.iter().map(|e| e.as_str())).collect()
     }
 
     /// Number of loaded languages.
@@ -65,6 +97,10 @@ impl LangRegistry {
         &[]
     }
 }
+
+// ── Global singleton ──
+
+static REGISTRY: LazyLock<LangRegistry> = LazyLock::new(LangRegistry::init);
 
 // ── Public free functions delegating to global singleton ──
 
@@ -89,6 +125,10 @@ pub fn plugin_count() -> usize {
 }
 
 /// Detect language name from file extension string.
+///
+/// Returns the language name for parseable types (rust, typescript, javascript),
+/// or a display-only name for known-but-unparseable types (json, toml, etc.),
+/// or "unknown" for unrecognized extensions.
 pub fn detect_lang_from_ext(ext: &str) -> String {
     if let Some(config) = REGISTRY.get_by_ext(ext) {
         return config.name.clone();
