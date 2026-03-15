@@ -340,10 +340,50 @@ pub fn file_color(ctx: &RenderContext, path: &str) -> Color32 {
         ColorMode::Heat => color_by_heat(ctx, path),
         ColorMode::Git => color_by_git(ctx, path),
         ColorMode::TdgGrade => color_by_tdg_grade(ctx, path),
-        // Coverage and Risk ColorModes are wired in a later plan (02.1-02+).
-        // Fall back to monochrome until the per-file data is available.
-        ColorMode::Coverage | ColorMode::Risk => ctx.theme_config.file_surface,
+        ColorMode::Coverage => color_by_coverage(ctx, path),
+        ColorMode::Risk => color_by_risk(ctx, path),
     }
+}
+
+/// Coverage color mode: look up per-file line coverage percentage, return blue-to-green gradient.
+/// Falls back to monochrome when no coverage report is available.
+/// Returns muted gray for files not present in coverage data (not instrumented).
+fn color_by_coverage(ctx: &RenderContext, path: &str) -> Color32 {
+    let report = match ctx.coverage_report {
+        Some(r) => r,
+        None => return ctx.theme_config.file_surface,
+    };
+    let idx = match report.by_path.get(path) {
+        Some(&i) => i,
+        // File not in coverage data — not instrumented (test files, build scripts, etc.)
+        None => return Color32::from_rgb(80, 80, 80),
+    };
+    let pct = report.files[idx].summary.lines.percent;
+    colors::coverage_color(pct)
+}
+
+/// Risk color mode: combines PageRank + coverage + clippy warnings into a risk score.
+/// Falls back gracefully when individual data sources are missing.
+fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
+    // Extract basename for graph-metrics lookup (nodes indexed by filename, not full path)
+    let basename = path.rsplit('/').next().unwrap_or(path);
+
+    // Look up PageRank from graph-metrics report
+    let pagerank = ctx.graph_metrics_report
+        .and_then(|gm| gm.by_filename.get(basename).map(|&idx| gm.data.nodes[idx].pagerank))
+        .unwrap_or(0.0);
+
+    // Look up line coverage percentage from coverage report
+    let coverage_pct = ctx.coverage_report
+        .and_then(|cov| cov.by_path.get(path).map(|&idx| cov.files[idx].summary.lines.percent));
+
+    // Look up clippy warning count from clippy report
+    let clippy_count = ctx.clippy_report
+        .and_then(|r| r.by_file.get(path))
+        .map(|d| d.total);
+
+    // max_raw = 1.0 for now; Plan 03 can refine with project-level max normalization
+    colors::risk_color(Some(pagerank), coverage_pct, clippy_count, 1.0)
 }
 
 fn color_by_language(ctx: &RenderContext, path: &str) -> Color32 {

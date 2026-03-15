@@ -20,6 +20,7 @@ use crate::core::heat::HeatTracker;
 use crate::core::settings::ThemeConfig;
 use crate::layout::viewport::ViewportTransform;
 use crate::core::settings::Settings;
+use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -60,6 +61,12 @@ pub struct RenderContext<'a> {
     /// PMAT TDG analysis report for TdgGrade color mode and badge rendering.
     /// Set to None until Plan 03 populates it from AppState.
     pub pmat_report: Option<&'a crate::core::pmat_types::PmatReport>,
+    /// Graph-metrics report (PageRank, centrality) for Risk color mode
+    pub graph_metrics_report: Option<&'a GraphMetricsReport>,
+    /// Cargo clippy warnings report for Risk color mode
+    pub clippy_report: Option<&'a ClippyReport>,
+    /// On-demand coverage report for Coverage color mode
+    pub coverage_report: Option<&'a CoverageReport>,
     /// Heat tracker for ripple animations and heat color mode
     pub heat: &'a HeatTracker,
     /// Monotonic timestamp for this frame (used for heat/ripple queries)
@@ -109,8 +116,9 @@ pub fn render_frame(
     // Badges on top of everything
     if lod_full {
         badges::draw_badges(painter, clip_rect, rd, ctx);
-        // TDG grade badges — only when ColorMode::TdgGrade and pmat_report is set
-        badges::draw_tdg_badges(painter, clip_rect, rd, ctx);
+        if ctx.color_mode == ColorMode::TdgGrade && ctx.pmat_report.is_some() {
+            badges::draw_tdg_badges(painter, clip_rect, rd, ctx);
+        }
     }
 
     // Minimap always visible — keeps orientation during pan/zoom
