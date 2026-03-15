@@ -28,7 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. No plugin loading code executes at startup; grammar plugin files are absent from the build
   3. Sentrux correctly scans Rust, TypeScript, and JavaScript files and silently skips all other file types without error
   4. The binary builds cleanly with no dead-code warnings from removed subsystems
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Remove MCP server, plugin system, whatif module, and evolution alias
+- [ ] 01-02-PLAN.md — Rewrite lang_registry as static 3-language registry with compiled-in grammars
 
 ### Phase 2: PMAT Integration
 **Goal**: Every file node in the treemap displays a PMAT TDG grade, and the health/mutation panels show PMAT data — sentrux's own analysis engine is gone
@@ -72,7 +76,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Cleanup | 0/TBD | Not started | - |
+| 1. Cleanup | 0/2 | Planning complete | - |
 | 2. PMAT Integration | 0/TBD | Not started | - |
 | 3. Git Diff Overlay | 0/TBD | Not started | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
