@@ -86,6 +86,7 @@ impl SentruxApp {
         self.state.evolution_report = reports.evolution;
         self.state.test_gap_report = reports.test_gaps;
         self.state.rule_check_result = reports.rules;
+        self.state.pmat_report = reports.pmat;
         self.state.snapshot = Some(snap);
         self.state.scanning = false;
         self.state.rebuild_file_index();
@@ -501,6 +502,7 @@ impl SentruxApp {
         self.state.evolution_report = None;
         self.state.test_gap_report = None;
         self.state.rule_check_result = None;
+        self.state.pmat_report = None;
 self.state.impact_files = None;
         self.state.dsm_cache = None;
         self.state.top_connections_cache = None;

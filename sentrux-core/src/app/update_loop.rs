@@ -256,7 +256,7 @@ impl SentruxApp {
             show_all_edges: self.state.show_all_edges,
             snapshot: self.state.snapshot.as_ref(),
             arch_report: self.state.arch_report.as_ref(),
-            pmat_report: None, // populated by Plan 03
+            pmat_report: self.state.pmat_report.as_ref(),
             heat: &self.state.heat,
             frame_instant: self.state.frame_instant,
             frame_now_secs: self.state.frame_now_secs,
