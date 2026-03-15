@@ -96,7 +96,12 @@ Plans:
   2. Hovering a colored node shows a tooltip with the phase number, phase name, and phase goal
   3. Sentrux reads phase-to-file mappings from `.planning/` plan files in the scanned project without requiring any configuration
   4. The overlay mode switcher cycles through all three modes (TDG / Git Diff / GSD Phase) with a single toolbar control
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — GSD phase types, parser adapter, ColorMode::GsdPhase variant, color functions, and DiffWindow::CommitRange
+- [ ] 04-02-PLAN.md — Pipeline wiring: AppState, ScanMsg handlers, background thread, RenderContext, auto-trigger, and file detail panel
+- [ ] 04-03-PLAN.md — Phase navigator panel, color legend, hover tooltips, and visual verification
 
 ## Progress
 
@@ -109,4 +114,4 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 | 2. PMAT Integration | 3/4 | Complete    | 2026-03-15 |
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
 | 3. Git Diff Overlay | 3/3 | Complete    | 2026-03-15 |
-| 4. GSD Phase Overlay | 0/TBD | Not started | - |
+| 4. GSD Phase Overlay | 0/3 | Planning complete | - |
