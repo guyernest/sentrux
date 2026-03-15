@@ -3,6 +3,7 @@
 //! Extracted from update_loop.rs to keep the main loop focused on lifecycle
 //! management and reduce fan-out (each panel import is an edge).
 
+use crate::layout::types::ColorMode;
 use super::SentruxApp;
 
 /// Outcome of drawing all panels — tells the update loop what actions to take.
@@ -34,6 +35,8 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
         {
             app.state.community_highlight = None;
         }
+        // Color legend strip — rendered on a second row inside the toolbar panel
+        draw_color_legend(ui, &app.state);
     });
 
     // Handle coverage_requested flag — spawn background thread with channel access
@@ -164,4 +167,121 @@ pub(crate) fn draw_all_panels(app: &mut SentruxApp, ctx: &egui::Context) -> Pane
 /// Draw the progress overlay on the canvas when scanning.
 pub(crate) fn draw_progress(ui: &mut egui::Ui, state: &crate::app::state::AppState, has_render: bool) {
     crate::app::progress::draw_progress_overlay(ui, state, has_render);
+}
+
+/// Draw a small colored swatch rectangle inline at the current cursor position.
+fn draw_swatch(ui: &mut egui::Ui, color: egui::Color32) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(14.0, 10.0), egui::Sense::hover());
+    ui.painter().rect_filled(rect, 2.0, color);
+}
+
+/// Draw a horizontal gradient strip from `color_a` to `color_b`.
+fn draw_gradient_strip(ui: &mut egui::Ui, color_a: egui::Color32, color_b: egui::Color32) {
+    let steps = 12;
+    let step_w = 80.0 / steps as f32;
+    let (strip_rect, _) = ui.allocate_exact_size(egui::vec2(80.0, 10.0), egui::Sense::hover());
+    let painter = ui.painter();
+    for i in 0..steps {
+        let t = i as f32 / (steps - 1) as f32;
+        let r = (color_a.r() as f32 + t * (color_b.r() as f32 - color_a.r() as f32)) as u8;
+        let g = (color_a.g() as f32 + t * (color_b.g() as f32 - color_a.g() as f32)) as u8;
+        let b = (color_a.b() as f32 + t * (color_b.b() as f32 - color_a.b() as f32)) as u8;
+        let color = egui::Color32::from_rgb(r, g, b);
+        let x = strip_rect.left() + i as f32 * step_w;
+        let cell = egui::Rect::from_min_size(
+            egui::pos2(x, strip_rect.top()),
+            egui::vec2(step_w + 0.5, strip_rect.height()),
+        );
+        painter.rect_filled(cell, 0.0, color);
+    }
+}
+
+/// Color legend for GitDiff mode.
+fn draw_git_diff_legend(ui: &mut egui::Ui, has_report: bool) {
+    use crate::renderer::colors::{git_diff_intensity_color, git_diff_new_file_color};
+    draw_swatch(ui, egui::Color32::from_rgb(50, 52, 55));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("unchanged").small().weak());
+    ui.add_space(8.0);
+    draw_gradient_strip(ui, git_diff_intensity_color(0.0), git_diff_intensity_color(1.0));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("few \u{2192} many changes").small().weak());
+    ui.add_space(8.0);
+    draw_swatch(ui, git_diff_new_file_color());
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("new file").small().weak());
+    if !has_report {
+        ui.add_space(8.0);
+        ui.label(egui::RichText::new("(no data \u{2014} select a window)").small().weak()
+            .color(egui::Color32::from_rgb(150, 140, 100)));
+    }
+}
+
+/// Color legend for TdgGrade mode — grade badges A+ through F.
+fn draw_tdg_legend(ui: &mut egui::Ui) {
+    use crate::renderer::colors::tdg_grade_color;
+    let grades = [("A+", "APLus"), ("A", "A"), ("B", "B"), ("C", "C"), ("D", "D"), ("F", "F")];
+    for (display, grade_key) in grades {
+        draw_swatch(ui, tdg_grade_color(grade_key));
+        ui.add_space(2.0);
+        ui.label(egui::RichText::new(display).small().weak());
+        ui.add_space(6.0);
+    }
+}
+
+/// Color legend for Coverage mode.
+fn draw_coverage_legend(ui: &mut egui::Ui) {
+    use crate::renderer::colors::coverage_color;
+    draw_gradient_strip(ui, coverage_color(100.0), coverage_color(0.0));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("well-covered \u{2192} uncovered").small().weak());
+    ui.add_space(8.0);
+    draw_swatch(ui, egui::Color32::from_rgb(50, 52, 55));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("no data").small().weak());
+}
+
+/// Color legend for Risk mode.
+fn draw_risk_legend(ui: &mut egui::Ui) {
+    draw_gradient_strip(
+        ui,
+        egui::Color32::from_rgb(30, 180, 40),
+        egui::Color32::from_rgb(244, 67, 54),
+    );
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("safe \u{2192} risky").small().weak());
+}
+
+/// Draw a per-mode color legend below the toolbar.
+///
+/// Only rendered for modes that have a meaningful color scale (GitDiff, TdgGrade,
+/// Coverage, Risk). Other modes (Language, Heat, Git, Monochrome) return early.
+pub(crate) fn draw_color_legend(ui: &mut egui::Ui, state: &crate::app::state::AppState) {
+    match state.color_mode {
+        ColorMode::GitDiff => {
+            ui.horizontal(|ui| {
+                ui.add_space(4.0);
+                draw_git_diff_legend(ui, state.git_diff_report.is_some());
+            });
+        }
+        ColorMode::TdgGrade => {
+            ui.horizontal(|ui| {
+                ui.add_space(4.0);
+                draw_tdg_legend(ui);
+            });
+        }
+        ColorMode::Coverage => {
+            ui.horizontal(|ui| {
+                ui.add_space(4.0);
+                draw_coverage_legend(ui);
+            });
+        }
+        ColorMode::Risk => {
+            ui.horizontal(|ui| {
+                ui.add_space(4.0);
+                draw_risk_legend(ui);
+            });
+        }
+        _ => {}
+    }
 }
