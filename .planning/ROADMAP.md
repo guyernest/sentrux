@@ -80,7 +80,12 @@ Plans:
   3. The time window selector in the toolbar offers at minimum 15 min, 1 h, 1 day, and 1 week; changing the window updates the overlay without freezing the UI
   4. A color legend below the toolbar explains the current overlay's color mapping
   5. The selected overlay mode is restored when the app is reopened
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Types, git walker extension, color functions, and ColorMode::GitDiff variant
+- [ ] 03-02-PLAN.md — Pipeline wiring: AppState, ScanMsg, RenderContext, background thread, prefs persistence
+- [ ] 03-03-PLAN.md — Toolbar window selector, color legend, and visual verification
 
 ### Phase 4: GSD Phase Overlay
 **Goal**: A developer working on a GSD-planned project can switch to GSD phase mode and see which files each phase will touch (or has touched), making the plan spatially visible on the treemap
@@ -103,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
 | 2. PMAT Integration | 3/4 | Complete    | 2026-03-15 |
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
-| 3. Git Diff Overlay | 0/TBD | Not started | - |
+| 3. Git Diff Overlay | 0/3 | Planning complete | - |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
