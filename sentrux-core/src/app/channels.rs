@@ -10,7 +10,7 @@ use crate::layout::types::FocusMode;
 use crate::core::snapshot::{ScanProgress, Snapshot};
 use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
-use crate::core::pmat_types::PmatReport;
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport};
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -53,6 +53,10 @@ pub struct ScanReports {
     pub test_gaps: Option<TestGapReport>,
     /// PMAT TDG + repo-score analysis — None if PMAT subprocess fails
     pub pmat: Option<PmatReport>,
+    /// PMAT graph-metrics report (PageRank, centrality) — None if subprocess fails
+    pub graph_metrics: Option<GraphMetricsReport>,
+    /// Cargo clippy warnings grouped by file — None if subprocess fails
+    pub clippy: Option<ClippyReport>,
 }
 
 /// Messages from scanner thread → main thread.
@@ -68,6 +72,10 @@ pub enum ScanMsg {
     Complete(Arc<Snapshot>, u64, Box<ScanReports>),
     /// Scan failed with error message
     Error(String, u64),
+    /// On-demand coverage run completed — carries the report to store on AppState
+    CoverageReady(CoverageReport),
+    /// On-demand coverage run failed — error message for logging
+    CoverageError(String),
 }
 
 /// Messages from main thread → layout thread.
@@ -167,7 +175,7 @@ mod tests {
         assert_eq!(report.tdg.files[*idx2].file_path, "./src/lib.rs");
     }
 
-    /// Scan pipeline contract: ScanReports can carry a PmatReport.
+    /// Scan pipeline contract: ScanReports can carry a PmatReport and new graph/clippy fields.
     #[test]
     fn scan_reports_has_pmat_field() {
         let tdg = make_tdg_with_files(&["./src/main.rs"]);
@@ -176,8 +184,12 @@ mod tests {
             evolution: None,
             test_gaps: None,
             pmat: Some(report),
+            graph_metrics: None,
+            clippy: None,
         };
         assert!(reports.pmat.is_some());
         assert_eq!(reports.pmat.as_ref().unwrap().tdg.total_files, 1);
+        assert!(reports.graph_metrics.is_none());
+        assert!(reports.clippy.is_none());
     }
 }

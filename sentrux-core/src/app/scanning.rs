@@ -54,6 +54,16 @@ impl SentruxApp {
                         ctx.request_repaint();
                     }
                 }
+                ScanMsg::CoverageReady(report) => {
+                    self.state.coverage_report = Some(report);
+                    self.state.coverage_running = false;
+                    ctx.request_repaint();
+                }
+                ScanMsg::CoverageError(msg) => {
+                    eprintln!("[coverage] {msg}");
+                    self.state.coverage_running = false;
+                    ctx.request_repaint();
+                }
             }
         }
     }
@@ -85,6 +95,12 @@ impl SentruxApp {
         self.state.evolution_report = reports.evolution;
         self.state.test_gap_report = reports.test_gaps;
         self.state.pmat_report = reports.pmat;
+        self.state.graph_metrics_report = reports.graph_metrics;
+        self.state.clippy_report = reports.clippy;
+        // Reset coverage on new scan — old coverage data is stale
+        self.state.coverage_report = None;
+        self.state.coverage_running = false;
+        self.state.community_highlight = None;
         self.state.snapshot = Some(snap);
         self.state.scanning = false;
         self.state.rebuild_file_index();
@@ -467,6 +483,11 @@ impl SentruxApp {
         self.state.evolution_report = None;
         self.state.test_gap_report = None;
         self.state.pmat_report = None;
+        self.state.graph_metrics_report = None;
+        self.state.clippy_report = None;
+        self.state.coverage_report = None;
+        self.state.coverage_running = false;
+        self.state.community_highlight = None;
         self.state.impact_files = None;
         self.state.top_connections_cache = None;
         self.state.drill_stack.clear();

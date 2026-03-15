@@ -9,7 +9,7 @@ use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::layout::types::ColorMode;
-use crate::core::pmat_types::PmatReport;
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport};
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
 use crate::core::settings::{Theme, ThemeConfig};
@@ -157,6 +157,16 @@ pub struct AppState {
     pub test_gap_report: Option<TestGapReport>,
     /// PMAT TDG + repo-score analysis — None until scan completes, None if PMAT unavailable
     pub pmat_report: Option<PmatReport>,
+    /// PMAT graph-metrics report (PageRank, centrality) — set at scan completion, None if unavailable
+    pub graph_metrics_report: Option<GraphMetricsReport>,
+    /// Cargo clippy warnings grouped by file — set at scan completion, None if subprocess fails
+    pub clippy_report: Option<ClippyReport>,
+    /// On-demand coverage report — None until user triggers coverage run, reset on new scan
+    pub coverage_report: Option<CoverageReport>,
+    /// True while on-demand coverage background thread is running
+    pub coverage_running: bool,
+    /// Community BFS highlight — set of file paths in the selected node's community subgraph
+    pub community_highlight: Option<std::collections::HashSet<String>>,
     /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
     pub impact_files: Option<Arc<HashSet<String>>>,
 
@@ -263,6 +273,11 @@ impl AppState {
             evolution_report: None,
             test_gap_report: None,
             pmat_report: None,
+            graph_metrics_report: None,
+            clippy_report: None,
+            coverage_report: None,
+            coverage_running: false,
+            community_highlight: None,
             impact_files: None,
             folder_picker_requested: false,
             hidden_paths: Arc::new(HashSet::new()),

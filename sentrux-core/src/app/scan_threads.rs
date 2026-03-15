@@ -5,7 +5,7 @@
 //! generation-based stale result rejection.
 
 use super::channels::{LayoutMsg, LayoutRequest, ScanCommand, ScanMsg};
-use crate::analysis::pmat_adapter::{check_pmat_available, run_pmat_repo_score, run_pmat_tdg};
+use crate::analysis::pmat_adapter::{check_pmat_available, run_pmat_repo_score, run_pmat_tdg, run_graph_metrics, run_clippy_warnings};
 use crate::core::pmat_types::PmatReport;
 use crossbeam_channel::{Receiver, Sender};
 use std::sync::Arc;
@@ -22,6 +22,18 @@ pub(crate) fn format_panic(thread_name: &str, payload: &Box<dyn std::any::Any + 
     } else {
         format!("Error: {} thread panicked (unknown payload)", thread_name)
     }
+}
+
+/// Check PMAT availability and send error if missing. Returns false if scan should abort.
+fn require_pmat(tx: &Sender<ScanMsg>, gen: u64) -> bool {
+    if let Err(msg) = check_pmat_available() {
+        let _ = tx.send(ScanMsg::Error(
+            format!("PMAT is required but not found: {msg}. Install: cargo install pmat"),
+            gen,
+        ));
+        return false;
+    }
+    true
 }
 
 /// Scanner background thread — handles both full scan and incremental rescan.
@@ -49,12 +61,7 @@ fn handle_full_scan(
     limits: &ScanLimits,
     gen: u64,
 ) {
-    // PMAT is required — refuse to scan if not installed.
-    if let Err(msg) = check_pmat_available() {
-        let _ = tx.send(ScanMsg::Error(
-            format!("PMAT is required but not found: {msg}. Install: cargo install pmat"),
-            gen,
-        ));
+    if !require_pmat(tx, gen) {
         return;
     }
 
@@ -91,12 +98,7 @@ fn handle_rescan(
     limits: &ScanLimits,
     gen: u64,
 ) {
-    // PMAT is required — refuse to scan if not installed.
-    if let Err(msg) = check_pmat_available() {
-        let _ = tx.send(ScanMsg::Error(
-            format!("PMAT is required but not found: {msg}. Install: cargo install pmat"),
-            gen,
-        ));
+    if !require_pmat(tx, gen) {
         return;
     }
 
@@ -140,10 +142,18 @@ fn send_scan_result(
                 PmatReport::from_tdg(tdg, repo_score)
             });
 
+            // Run graph-metrics analysis (PageRank, centrality per file)
+            let graph_metrics = run_graph_metrics(root_path, gen);
+
+            // Run clippy warnings analysis (grouped by file and category)
+            let clippy = run_clippy_warnings(root_path);
+
             let reports = crate::app::channels::ScanReports {
                 evolution,
                 test_gaps: Some(test_gaps),
                 pmat,
+                graph_metrics,
+                clippy,
             };
 
             if tx.send(ScanMsg::Complete(Arc::clone(&snap), gen, Box::new(reports))).is_err() {
