@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-gsd-phase-overlay 04-01-PLAN.md
-last_updated: "2026-03-15T20:05:29.798Z"
+stopped_at: Completed 04-gsd-phase-overlay 04-02-PLAN.md
+last_updated: "2026-03-15T20:11:01.956Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
   percent: 50
 ---
 
@@ -63,6 +63,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03-git-diff-overlay P02 | 4 | 2 tasks | 6 files |
 | Phase 03-git-diff-overlay P03 | 50 | 2 tasks | 8 files |
 | Phase 04-gsd-phase-overlay P01 | 35 | 2 tasks | 16 files |
+| Phase 04-gsd-phase-overlay P02 | 3 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ Recent decisions affecting current work:
 - [Phase 04-gsd-phase-overlay]: DiffWindow::CommitRange adds String fields making Copy impossible; preset_slice() OnceLock fn replaces PRESETS const; callers updated to .clone()
 - [Phase 04-gsd-phase-overlay]: ColorMode::GsdPhase serializes to GsdPhase (PascalCase serde rename) consistent with GitDiff pattern
 - [Phase 04-gsd-phase-overlay]: color_by_gsd_phase uses find_directory_match() from gsd_phase_adapter for directory prefix entries; NO_DATA_GRAY for unassociated files
+- [Phase 04-gsd-phase-overlay]: gsd_phase_running/requested added following git_diff pattern; selected_phase_idx persists across scans per CONTEXT.md
+- [Phase 04-gsd-phase-overlay]: clear_stale_state resets gsd_phase_report/running but NOT selected_phase_idx (user navigation persists)
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T20:05:29.796Z
-Stopped at: Completed 04-gsd-phase-overlay 04-01-PLAN.md
+Last session: 2026-03-15T20:11:01.954Z
+Stopped at: Completed 04-gsd-phase-overlay 04-02-PLAN.md
 Resume file: None
