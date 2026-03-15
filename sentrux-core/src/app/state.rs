@@ -13,6 +13,7 @@ use crate::metrics::rules::checks::RuleCheckResult;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::metrics::HealthReport;
 use crate::layout::types::ColorMode;
+use crate::core::pmat_types::PmatReport;
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
 use crate::core::settings::{Theme, ThemeConfig};
@@ -168,7 +169,9 @@ pub struct AppState {
     pub test_gap_report: Option<TestGapReport>,
     /// Architecture rules check result
     pub rule_check_result: Option<RuleCheckResult>,
-/// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
+    /// PMAT TDG + repo-score analysis — None until scan completes, None if PMAT unavailable
+    pub pmat_report: Option<PmatReport>,
+    /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
     pub impact_files: Option<Arc<HashSet<String>>>,
 
     /// BUG 2 fix: flag set by toolbar when "Open Folder" is clicked.
@@ -244,7 +247,7 @@ impl AppState {
             size_mode: SizeMode::Lines,
             scale_mode: ScaleMode::Smooth,
             layout_mode: LayoutMode::Treemap,
-            color_mode: ColorMode::Monochrome,
+            color_mode: ColorMode::TdgGrade,
             theme,
             theme_config: ThemeConfig::from_theme(theme),
             edge_filter: EdgeFilter::All,
@@ -278,6 +281,7 @@ impl AppState {
             evolution_report: None,
             test_gap_report: None,
             rule_check_result: None,
+            pmat_report: None,
             impact_files: None,
             folder_picker_requested: false,
             hidden_paths: Arc::new(HashSet::new()),

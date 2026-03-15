@@ -33,7 +33,7 @@ impl Default for UserPrefs {
     fn default() -> Self {
         Self {
             theme: Theme::Calm,
-            color_mode: ColorMode::Monochrome,
+            color_mode: ColorMode::TdgGrade,
             size_mode: SizeMode::Lines,
             scale_mode: ScaleMode::Smooth,
             layout_mode: LayoutMode::Treemap,

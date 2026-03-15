@@ -60,6 +60,9 @@ pub struct RenderContext<'a> {
     pub snapshot: Option<&'a Arc<Snapshot>>,
     /// Architecture report for blast-radius color mode
     pub arch_report: Option<&'a ArchReport>,
+    /// PMAT TDG analysis report for TdgGrade color mode and badge rendering.
+    /// Set to None until Plan 03 populates it from AppState.
+    pub pmat_report: Option<&'a crate::core::pmat_types::PmatReport>,
     /// Heat tracker for ripple animations and heat color mode
     pub heat: &'a HeatTracker,
     /// Monotonic timestamp for this frame (used for heat/ripple queries)

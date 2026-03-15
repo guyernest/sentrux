@@ -338,12 +338,8 @@ pub fn file_color(ctx: &RenderContext, path: &str) -> Color32 {
         ColorMode::Monochrome => ctx.theme_config.file_surface,
         ColorMode::Language => color_by_language(ctx, path),
         ColorMode::Heat => color_by_heat(ctx, path),
-        ColorMode::Age => color_by_age(ctx, path),
-        ColorMode::Churn => color_by_churn(ctx, path),
-        ColorMode::Risk => color_by_risk(ctx, path),
         ColorMode::Git => color_by_git(ctx, path),
-        ColorMode::ExecDepth => color_by_exec_depth(ctx, path),
-        ColorMode::BlastRadius => color_by_blast_radius(ctx, path),
+        ColorMode::TdgGrade => color_by_tdg_grade(ctx, path),
     }
 }
 
@@ -365,56 +361,6 @@ fn color_by_heat(ctx: &RenderContext, path: &str) -> Color32 {
     }
 }
 
-/// Age mode: color by file mtime — newer = brighter. O(1) via file_index.
-fn color_by_age(ctx: &RenderContext, path: &str) -> Color32 {
-    let mtime = ctx.file_index.get(path).map(|e| e.mtime).filter(|&m| m > 0.0);
-    match mtime {
-        Some(mt) => {
-            let now = ctx.frame_now_secs;
-            let age_days = ((now - mt) / 86400.0).max(0.0);
-            let t = (age_days / 365.0).min(1.0) as f32; // 0=new, 1=1yr+
-            let r = (100.0 + (1.0 - t) * 155.0) as u8;
-            let g = (180.0 * (1.0 - t)) as u8;
-            let b = (60.0 + t * 140.0) as u8;
-            Color32::from_rgb(r, g, b)
-        }
-        None => Color32::from_rgb(70, 70, 70),
-    }
-}
-
-/// Churn: estimate from git status + function count.
-fn color_by_churn(ctx: &RenderContext, path: &str) -> Color32 {
-    let entry = ctx.file_index.get(path);
-    let gs = entry.map(|e| e.gs.as_str()).unwrap_or("");
-    let funcs = entry.map(|e| e.funcs).unwrap_or(0);
-    let churn = match gs {
-        "M" | "MM" => 0.7 + (funcs as f64 * 0.01).min(0.3),
-        "A" => 0.5,
-        _ => (funcs as f64 * 0.005).min(0.4),
-    };
-    let t = churn.min(1.0) as f32;
-    let r = (80.0 + t * 175.0) as u8;
-    let g = (180.0 - t * 120.0) as u8;
-    let b = (80.0 - t * 40.0) as u8;
-    Color32::from_rgb(r, g, b)
-}
-
-/// Risk: high complexity + modified = high risk.
-fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
-    let entry = ctx.file_index.get(path);
-    let funcs = entry.map(|e| e.funcs).unwrap_or(0);
-    let lines = entry.map(|e| e.lines).unwrap_or(0);
-    let gs = entry.map(|e| e.gs.as_str()).unwrap_or("");
-    let complexity = (funcs as f64 * 0.1 + lines as f64 * 0.001).min(1.0);
-    let modified = if matches!(gs, "M" | "MM") { 0.5 } else { 0.0 };
-    let risk = (complexity + modified).min(1.0);
-    let t = risk as f32;
-    let r = (60.0 + t * 195.0) as u8;
-    let g = (200.0 - t * 160.0) as u8;
-    let b = (60.0 - t * 30.0) as u8;
-    Color32::from_rgb(r, g, b)
-}
-
 fn color_by_git(ctx: &RenderContext, path: &str) -> Color32 {
     let gs = ctx
         .file_index
@@ -424,28 +370,17 @@ fn color_by_git(ctx: &RenderContext, path: &str) -> Color32 {
     colors::git_color(gs)
 }
 
-fn color_by_exec_depth(ctx: &RenderContext, path: &str) -> Color32 {
-    let depth = ctx
-        .snapshot
-        .as_ref()
-        .and_then(|s| s.exec_depth.get(path))
-        .copied()
-        .unwrap_or(u32::MAX);
-    if depth == u32::MAX {
-        Color32::from_rgb(50, 50, 50)
-    } else {
-        colors::exec_depth_color(depth)
-    }
-}
-
-fn color_by_blast_radius(ctx: &RenderContext, path: &str) -> Color32 {
-    let (radius, max_radius) = ctx
-        .arch_report
-        .as_ref()
-        .map(|a| {
-            let r = a.blast_radius.get(path).copied().unwrap_or(0);
-            (r, a.max_blast_radius)
-        })
-        .unwrap_or((0, 0));
-    colors::blast_radius_color(radius, max_radius)
+/// TDG grade color mode: look up file grade from pmat_report, return green-to-red gradient.
+/// Falls back to theme's file_surface if no report is available.
+fn color_by_tdg_grade(ctx: &RenderContext, path: &str) -> Color32 {
+    let report = match ctx.pmat_report {
+        Some(r) => r,
+        None => return ctx.theme_config.file_surface,
+    };
+    let idx = match report.by_path.get(path) {
+        Some(&i) => i,
+        None => return ctx.theme_config.file_surface,
+    };
+    let grade = &report.tdg.files[idx].grade;
+    colors::tdg_grade_color(grade)
 }

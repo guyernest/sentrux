@@ -11,65 +11,54 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ColorMode {
-    /// Terminal pixel monochrome: flat neutral surface color, no per-file coloring.
-    /// Style guide §10: "File blocks: one neutral surface color."
-    Monochrome,
     /// Color by programming language (each language gets a unique hue)
     Language,
     /// Color by live edit heat (recently changed files glow warm)
     Heat,
-    /// Color by file age (older = cooler, newer = warmer)
-    Age,
-    /// Color by git churn frequency (more commits = hotter)
-    Churn,
-    /// Color by risk score (complexity x churn)
-    Risk,
     /// Color by git status (added/modified/deleted/untracked)
     Git,
-    /// Color by execution depth from entry points (BFS distance)
-    ExecDepth,
-    /// Color by blast radius (transitive impact if file changes)
-    BlastRadius,
+    /// Color by PMAT TDG grade (A+ = green, F = red)
+    TdgGrade,
+    /// Terminal pixel monochrome: flat neutral surface color, no per-file coloring.
+    /// Style guide §10: "File blocks: one neutral surface color."
+    /// Also used as the serde fallback for removed variants (Age, Churn, Risk, ExecDepth, BlastRadius).
+    #[serde(other)]
+    Monochrome,
 }
 
 impl ColorMode {
     /// All supported color mode variants.
     pub const ALL: &'static [ColorMode] = &[
-        ColorMode::Monochrome,
         ColorMode::Language,
         ColorMode::Heat,
-        ColorMode::Age,
-        ColorMode::Churn,
-        ColorMode::Risk,
         ColorMode::Git,
-        ColorMode::ExecDepth,
-        ColorMode::BlastRadius,
+        ColorMode::TdgGrade,
+        ColorMode::Monochrome,
     ];
 
     /// Color modes available in the free tier.
     pub const FREE: &'static [ColorMode] = &[
-        ColorMode::Monochrome,
         ColorMode::Language,
         ColorMode::Heat,
+        ColorMode::Git,
+        ColorMode::TdgGrade,
+        ColorMode::Monochrome,
     ];
 
     /// Whether this mode requires Pro tier.
+    /// All remaining variants survived the prune because they are essential — none are Pro-gated.
     pub fn is_pro(self) -> bool {
-        !matches!(self, ColorMode::Monochrome | ColorMode::Language | ColorMode::Heat)
+        false
     }
 
     /// Human-readable display label for this color mode.
     pub fn label(self) -> &'static str {
         match self {
-            ColorMode::Monochrome => "Mono",
             ColorMode::Language => "Language",
             ColorMode::Heat => "Heat",
-            ColorMode::Age => "Age",
-            ColorMode::Churn => "Churn",
-            ColorMode::Risk => "Risk",
             ColorMode::Git => "Git Status",
-            ColorMode::ExecDepth => "Exec Depth",
-            ColorMode::BlastRadius => "Blast Radius",
+            ColorMode::TdgGrade => "TDG Grade",
+            ColorMode::Monochrome => "Mono",
         }
     }
 }
@@ -133,6 +122,61 @@ impl FocusMode {
         }
     }
 
+}
+
+// ── ColorMode tests ────────────────────────────────────────────────────────
+#[cfg(test)]
+mod color_mode_tests {
+    use super::*;
+
+    #[test]
+    fn color_mode_all_has_exactly_5_variants() {
+        assert_eq!(ColorMode::ALL.len(), 5);
+    }
+
+    #[test]
+    fn color_mode_all_contains_tdg_grade() {
+        assert!(ColorMode::ALL.contains(&ColorMode::TdgGrade));
+    }
+
+    #[test]
+    fn color_mode_tdg_grade_label() {
+        assert_eq!(ColorMode::TdgGrade.label(), "TDG Grade");
+    }
+
+    #[test]
+    fn color_mode_tdg_grade_is_not_pro() {
+        assert!(!ColorMode::TdgGrade.is_pro());
+    }
+
+    #[test]
+    fn color_mode_deserialize_churn_gives_monochrome() {
+        let val: ColorMode = serde_json::from_str("\"churn\"").expect("should deserialize");
+        assert_eq!(val, ColorMode::Monochrome, "old 'churn' variant should fallback to Monochrome");
+    }
+
+    #[test]
+    fn color_mode_deserialize_risk_gives_monochrome() {
+        let val: ColorMode = serde_json::from_str("\"risk\"").expect("should deserialize");
+        assert_eq!(val, ColorMode::Monochrome, "old 'risk' variant should fallback to Monochrome");
+    }
+
+    #[test]
+    fn color_mode_deserialize_tdggrade() {
+        let val: ColorMode = serde_json::from_str("\"tdggrade\"").expect("should deserialize");
+        assert_eq!(val, ColorMode::TdgGrade);
+    }
+
+    #[test]
+    fn color_mode_no_old_variants_in_all() {
+        // Age, Churn, Risk, ExecDepth, BlastRadius should not be present
+        for &mode in ColorMode::ALL {
+            assert!(
+                matches!(mode, ColorMode::Language | ColorMode::Heat | ColorMode::Git | ColorMode::TdgGrade | ColorMode::Monochrome),
+                "unexpected variant in ALL: {:?}", mode
+            );
+        }
+    }
 }
 
 /// Which edge types to display

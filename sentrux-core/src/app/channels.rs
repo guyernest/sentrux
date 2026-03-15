@@ -13,6 +13,7 @@ use crate::metrics::arch::ArchReport;
 use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::metrics::rules::checks::RuleCheckResult;
+use crate::core::pmat_types::PmatReport;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -59,6 +60,8 @@ pub struct ScanReports {
     pub test_gaps: Option<TestGapReport>,
     /// Architecture rule check results
     pub rules: Option<RuleCheckResult>,
+    /// PMAT TDG + repo-score analysis — None if PMAT subprocess fails
+    pub pmat: Option<PmatReport>,
 }
 
 /// Messages from scanner thread → main thread.
@@ -117,5 +120,77 @@ pub struct LayoutRequest {
 pub enum LayoutMsg {
     /// Layout computation complete: render data + version for stale-result rejection
     Ready(RenderData, u64),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::pmat_types::{PmatTdgOutput, PmatFileScore, PmatReport};
+    use std::collections::HashMap;
+
+    fn make_tdg_with_files(paths: &[&str]) -> PmatTdgOutput {
+        let files = paths.iter().map(|p| PmatFileScore {
+            file_path: p.to_string(),
+            grade: "B".to_string(),
+            total: 70.0,
+            structural_complexity: 70.0,
+            semantic_complexity: 70.0,
+            duplication_ratio: 70.0,
+            coupling_score: 70.0,
+            doc_coverage: 70.0,
+            consistency_score: 70.0,
+            entropy_score: 70.0,
+            confidence: 0.9,
+            language: "rust".to_string(),
+            critical_defects_count: 0,
+            has_critical_defects: false,
+            penalties_applied: vec![],
+        }).collect();
+        PmatTdgOutput {
+            files,
+            average_score: 70.0,
+            average_grade: "B".to_string(),
+            total_files: paths.len() as u32,
+            language_distribution: HashMap::new(),
+        }
+    }
+
+    /// Scan pipeline contract: PmatReport::from_tdg strips "./" prefix,
+    /// enabling O(1) lookup by bare path (as stored in snapshot file paths).
+    #[test]
+    fn pmat_report_pipeline_by_path_lookup() {
+        let tdg = make_tdg_with_files(&[
+            "./src/main.rs",
+            "./src/lib.rs",
+        ]);
+        let report = PmatReport::from_tdg(tdg, None);
+
+        // Bare path lookup (no "./" prefix) — what scan pipeline uses
+        let idx = report.by_path.get("src/main.rs");
+        assert!(idx.is_some(), "by_path should find 'src/main.rs' (stripped from './src/main.rs')");
+        let idx = idx.unwrap();
+        assert_eq!(report.tdg.files[*idx].file_path, "./src/main.rs");
+
+        // Lookup of second file
+        let idx2 = report.by_path.get("src/lib.rs").expect("src/lib.rs should be in by_path");
+        assert_eq!(report.tdg.files[*idx2].file_path, "./src/lib.rs");
+    }
+
+    /// Scan pipeline contract: ScanReports can carry a PmatReport.
+    #[test]
+    fn scan_reports_has_pmat_field() {
+        let tdg = make_tdg_with_files(&["./src/main.rs"]);
+        let report = PmatReport::from_tdg(tdg, None);
+        let reports = ScanReports {
+            health: None,
+            arch: None,
+            evolution: None,
+            test_gaps: None,
+            rules: None,
+            pmat: Some(report),
+        };
+        assert!(reports.pmat.is_some());
+        assert_eq!(reports.pmat.as_ref().unwrap().tdg.total_files, 1);
+    }
 }
 

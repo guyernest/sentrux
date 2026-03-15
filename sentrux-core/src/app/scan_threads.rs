@@ -5,6 +5,8 @@
 //! generation-based stale result rejection.
 
 use super::channels::{LayoutMsg, LayoutRequest, ScanCommand, ScanMsg};
+use crate::analysis::pmat_adapter::{check_pmat_available, run_pmat_repo_score, run_pmat_tdg};
+use crate::core::pmat_types::PmatReport;
 use crossbeam_channel::{Receiver, Sender};
 use std::sync::Arc;
 
@@ -47,6 +49,15 @@ fn handle_full_scan(
     limits: &ScanLimits,
     gen: u64,
 ) {
+    // PMAT is required — refuse to scan if not installed.
+    if let Err(msg) = check_pmat_available() {
+        let _ = tx.send(ScanMsg::Error(
+            format!("PMAT is required but not found: {msg}. Install: cargo install pmat"),
+            gen,
+        ));
+        return;
+    }
+
     crate::analysis::parser::clear_cache();
     crate::analysis::git::clear_cache();
 
@@ -80,6 +91,15 @@ fn handle_rescan(
     limits: &ScanLimits,
     gen: u64,
 ) {
+    // PMAT is required — refuse to scan if not installed.
+    if let Err(msg) = check_pmat_available() {
+        let _ = tx.send(ScanMsg::Error(
+            format!("PMAT is required but not found: {msg}. Install: cargo install pmat"),
+            gen,
+        ));
+        return;
+    }
+
     let result = crate::analysis::scanner::rescan::rescan_changed(
         root,
         old_snap,
@@ -116,12 +136,22 @@ fn send_scan_result(
             // Compute rules check if .sentrux/rules.toml exists
             let rules = compute_rules_check(root_path, &snap, &report, &arch);
 
+            // Run PMAT TDG and repo-score analysis after filesystem scan completes.
+            // check_pmat_available() was already called at the start of handle_full/rescan,
+            // so PMAT is confirmed available. run_pmat_tdg/repo_score still return None
+            // on parse error or other subprocess failure — handled gracefully.
+            let pmat = run_pmat_tdg(root_path, gen).map(|tdg| {
+                let repo_score = run_pmat_repo_score(root_path, gen);
+                PmatReport::from_tdg(tdg, repo_score)
+            });
+
             let reports = crate::app::channels::ScanReports {
                 health: Some(report),
                 arch: Some(arch),
                 evolution,
                 test_gaps: Some(test_gaps),
                 rules,
+                pmat,
             };
 
             if tx.send(ScanMsg::Complete(Arc::clone(&snap), gen, Box::new(reports))).is_err() {

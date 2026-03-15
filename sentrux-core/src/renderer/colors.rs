@@ -80,3 +80,33 @@ pub fn exec_depth_color(depth: u32) -> Color32 {
     Color32::from_rgb(r, g, b)
 }
 
+/// TDG grade → green-to-red gradient.
+/// A+ (t=1.0) = greenish, F (t=0.0) = reddish.
+pub fn tdg_grade_color(grade: &str) -> Color32 {
+    let t = crate::core::pmat_types::grade_to_t(grade);
+    // green(A+) -> yellow(C) -> red(F)
+    let r = (30.0 + (1.0 - t) * 225.0) as u8;
+    let g = (180.0 * t) as u8;
+    let b = 40_u8;
+    Color32::from_rgb(r, g, b)
+}
+
+#[cfg(test)]
+mod tdg_grade_color_tests {
+    use super::*;
+
+    #[test]
+    fn tdg_grade_color_aplus_is_greenish() {
+        let c = tdg_grade_color("APLus");
+        let [r, g, _b, _] = c.to_array();
+        assert!(g > r, "A+ should be greenish: r={} g={}", r, g);
+    }
+
+    #[test]
+    fn tdg_grade_color_f_is_reddish() {
+        let c = tdg_grade_color("F");
+        let [r, g, _b, _] = c.to_array();
+        assert!(r > g, "F should be reddish: r={} g={}", r, g);
+    }
+}
+

@@ -41,8 +41,6 @@ impl SentruxApp {
         let (layout_msg_tx, layout_msg_rx) = bounded::<LayoutMsg>(2);
         let (watch_tx, watch_rx) = bounded::<FileEvent>(256);
 
-        log_failed_languages();
-
         let scanner_handle = spawn_scanner_thread(scan_cmd_rx, scan_msg_tx.clone());
         let layout_handle = spawn_layout_thread(layout_req_rx, layout_msg_tx);
 
@@ -62,14 +60,6 @@ impl SentruxApp {
             layout_handle: Some(layout_handle),
             folder_picker_rx: None,
         }
-    }
-}
-
-/// Surface failed plugin loads at startup.
-fn log_failed_languages() {
-    let failed = crate::analysis::lang_registry::failed_plugins();
-    for err in failed {
-        eprintln!("[app] WARNING: plugin failed: {}", err);
     }
 }
 
@@ -266,6 +256,7 @@ impl SentruxApp {
             show_all_edges: self.state.show_all_edges,
             snapshot: self.state.snapshot.as_ref(),
             arch_report: self.state.arch_report.as_ref(),
+            pmat_report: None, // populated by Plan 03
             heat: &self.state.heat,
             frame_instant: self.state.frame_instant,
             frame_now_secs: self.state.frame_now_secs,
