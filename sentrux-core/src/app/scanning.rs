@@ -71,13 +71,13 @@ impl SentruxApp {
                     ctx.request_repaint();
                 }
                 ScanMsg::GitDiffReady(report) => {
-                    // Plan 03-02 will store report on AppState; for now, log receipt.
-                    eprintln!("[git-diff] report ready: {} files, max_intensity={:.2}",
-                        report.by_file.len(), report.max_intensity);
+                    self.state.git_diff_report = Some(report);
+                    self.state.git_diff_running = false;
                     ctx.request_repaint();
                 }
                 ScanMsg::GitDiffError(msg) => {
                     eprintln!("[git-diff] {msg}");
+                    self.state.git_diff_running = false;
                     ctx.request_repaint();
                 }
             }
@@ -115,6 +115,10 @@ impl SentruxApp {
         self.state.clippy_report = reports.clippy;
         // Reset coverage on new scan — old coverage data is stale
         self.state.coverage_report = None;
+        // Reset git diff on new scan — old diff data is stale
+        // Do NOT reset git_diff_window or git_diff_custom_n (user selections persist)
+        self.state.git_diff_report = None;
+        self.state.git_diff_running = false;
         // Recompute max risk normalization (after coverage reset — no stale data)
         self.state.max_risk_raw = crate::renderer::rects::compute_max_risk_raw(
             self.state.graph_metrics_report.as_ref(),
@@ -551,6 +555,10 @@ impl SentruxApp {
         self.state.clippy_report = None;
         self.state.coverage_report = None;
         self.state.coverage_running = false;
+        // Reset git diff on new scan — old diff data is stale
+        // Do NOT reset git_diff_window or git_diff_custom_n (user selections persist)
+        self.state.git_diff_report = None;
+        self.state.git_diff_running = false;
         self.state.community_highlight = None;
         self.state.impact_files = None;
         self.state.top_connections_cache = None;

@@ -41,6 +41,12 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
         app.state.coverage_requested = false;
         maybe_spawn_coverage_thread(app);
     }
+
+    // Handle git_diff_requested flag — spawn background thread with channel access
+    if app.state.git_diff_requested {
+        app.state.git_diff_requested = false;
+        maybe_spawn_git_diff_thread(app);
+    }
 }
 
 /// Spawn a background coverage thread if conditions are met.
@@ -72,6 +78,33 @@ fn maybe_spawn_coverage_thread(app: &mut SentruxApp) {
         Err(e) => {
             eprintln!("[app] failed to spawn coverage thread: {}", e);
             app.state.coverage_running = false;
+        }
+    }
+}
+
+/// Spawn a background git diff thread if conditions are met.
+/// Sets git_diff_running=true and sends GitDiffReady/GitDiffError via scan_msg_tx.
+fn maybe_spawn_git_diff_thread(app: &mut SentruxApp) {
+    let root = match app.state.root_path.clone() {
+        Some(r) => r,
+        None => return,
+    };
+    if app.state.git_diff_running || app.state.scanning {
+        return;
+    }
+    app.state.git_diff_running = true;
+    let msg_tx = app.scan_msg_tx.clone();
+    let window = app.state.git_diff_window;
+    match std::thread::Builder::new()
+        .name("git-diff".into())
+        .spawn(move || {
+            crate::analysis::git_diff_adapter::spawn_git_diff_thread(root, window, msg_tx);
+        })
+    {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("[app] failed to spawn git-diff thread: {}", e);
+            app.state.git_diff_running = false;
         }
     }
 }

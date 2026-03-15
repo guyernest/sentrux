@@ -9,7 +9,8 @@ use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::layout::types::ColorMode;
-use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport};
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport};
+use crate::metrics::evo::git_walker::DiffWindow;
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
 use crate::core::settings::{Theme, ThemeConfig};
@@ -165,6 +166,17 @@ pub struct AppState {
     pub coverage_report: Option<CoverageReport>,
     /// True while on-demand coverage background thread is running
     pub coverage_running: bool,
+    /// On-demand git diff report — None until user triggers git diff run, reset on new scan
+    pub git_diff_report: Option<GitDiffReport>,
+    /// True while on-demand git diff background thread is running
+    pub git_diff_running: bool,
+    /// Active diff window selection for git diff overlay
+    pub git_diff_window: DiffWindow,
+    /// Flag set by toolbar when "Run Git Diff" is requested.
+    /// The app handles spawning the background thread in draw_panels.rs.
+    pub git_diff_requested: bool,
+    /// Custom commit count for DiffWindow::CommitCount — user input field
+    pub git_diff_custom_n: u32,
     /// Pre-computed max raw risk value for normalization — updated when reports change
     pub max_risk_raw: f64,
     /// Community BFS highlight — set of file paths in the selected node's community subgraph
@@ -284,6 +296,11 @@ impl AppState {
             clippy_report: None,
             coverage_report: None,
             coverage_running: false,
+            git_diff_report: None,
+            git_diff_running: false,
+            git_diff_window: DiffWindow::default(),
+            git_diff_requested: false,
+            git_diff_custom_n: 10,
             max_risk_raw: 1.0,
             community_highlight: None,
             impact_files: None,
