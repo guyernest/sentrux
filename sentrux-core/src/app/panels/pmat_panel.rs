@@ -231,20 +231,23 @@ fn draw_git_diff_section(ui: &mut Ui, state: &AppState, path: &str) {
     });
 }
 
-/// Draw GSD phase association section for the selected file.
-/// Shows which phase the file belongs to (number, name, status). If no association,
-/// shows "Not in any GSD phase". Only rendered when ColorMode::GsdPhase is active.
+/// Draw GSD phase association section for the selected file (Plan 03 enhanced version).
+///
+/// Shows phase number, name, goal, and status for the primary phase. Also shows
+/// "Also modified in: Phase X, Y" if the file appears in multiple phases.
+/// If no association, shows an actionable "not in any phase" message in amber.
+/// Only rendered when ColorMode::GsdPhase is active.
 fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
     use crate::core::pmat_types::PhaseStatus;
     egui::CollapsingHeader::new(
-        egui::RichText::new("GSD Phase").monospace().size(9.0).strong(),
+        egui::RichText::new("Phase History").monospace().size(9.0).strong(),
     )
-    .id_salt("gsd_phase_section")
+    .id_salt("gsd_phase_detail")
     .default_open(true)
     .show(ui, |ui| {
         let Some(report) = &state.gsd_phase_report else {
             ui.label(
-                egui::RichText::new("GSD phase data not loaded")
+                egui::RichText::new("No phase data")
                     .monospace()
                     .size(9.0)
                     .color(ui.visuals().weak_text_color()),
@@ -252,11 +255,12 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
             return;
         };
         let Some(&phase_idx) = report.by_file.get(path) else {
+            // Not in any phase: actionable amber message
             ui.label(
-                egui::RichText::new("Not in any GSD phase")
+                egui::RichText::new("Not referenced in any GSD phase plan. Consider whether this file needs review.")
                     .monospace()
                     .size(9.0)
-                    .color(ui.visuals().weak_text_color()),
+                    .color(egui::Color32::from_rgb(200, 160, 60)),
             );
             return;
         };
@@ -279,8 +283,19 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
             PhaseStatus::InProgress => "In Progress",
             PhaseStatus::Planned => "Planned",
         };
-        label_row(ui, "Phase:", &format!("{:02}", phase.number));
-        label_row(ui, "Name:", &phase.name);
+
+        // Show "Phase {number}: {name}" with status color
+        ui.horizontal(|ui| {
+            ui.colored_label(
+                status_color,
+                egui::RichText::new(format!("Phase {}: {}", phase.number, phase.name))
+                    .monospace()
+                    .size(9.0)
+                    .strong(),
+            );
+        });
+        ui.label(egui::RichText::new(format!("Goal: {}", phase.goal)).monospace().size(9.0)
+            .color(ui.visuals().weak_text_color()));
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new("Status:").monospace().size(9.0));
             ui.colored_label(
@@ -288,6 +303,22 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
                 egui::RichText::new(status_label).monospace().size(9.0),
             );
         });
+
+        // Multi-phase history: find all phases this file appears in (not just by_file primary)
+        let other_phases: Vec<&str> = report.phases.iter()
+            .enumerate()
+            .filter(|(i, ph)| *i != phase_idx && ph.files.iter().any(|f| f == path))
+            .map(|(_, ph)| ph.number.as_str())
+            .collect();
+
+        if !other_phases.is_empty() {
+            ui.label(
+                egui::RichText::new(format!("Also modified in: Phase {}", other_phases.join(", Phase ")))
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+        }
     });
 }
 

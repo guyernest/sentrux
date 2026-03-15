@@ -37,6 +37,8 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
         }
         // Color legend strip — rendered on a second row inside the toolbar panel
         draw_color_legend(ui, &app.state);
+        // GSD phase navigator bar — rendered below the legend when in GsdPhase mode
+        draw_gsd_phase_navigator(ui, &mut app.state);
     });
 
     // Handle coverage_requested flag — spawn background thread with channel access
@@ -293,6 +295,232 @@ fn draw_risk_legend(ui: &mut egui::Ui) {
     ui.label(egui::RichText::new("safe \u{2192} risky").small().weak());
 }
 
+/// Color legend for GsdPhase mode.
+fn draw_gsd_phase_legend(ui: &mut egui::Ui, state: &crate::app::state::AppState) {
+    use crate::renderer::colors::gsd_phase_color;
+    use crate::core::pmat_types::PhaseStatus;
+    draw_swatch(ui, gsd_phase_color(PhaseStatus::Completed));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("Completed").small().weak());
+    ui.add_space(8.0);
+    draw_swatch(ui, gsd_phase_color(PhaseStatus::InProgress));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("In Progress").small().weak());
+    ui.add_space(8.0);
+    draw_swatch(ui, gsd_phase_color(PhaseStatus::Planned));
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("Planned").small().weak());
+    ui.add_space(8.0);
+    draw_swatch(ui, crate::renderer::colors::NO_DATA_GRAY);
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("Not in any phase").small().weak());
+
+    // Coverage stat
+    if let Some(report) = &state.gsd_phase_report {
+        let total_files = state.file_index.len();
+        if total_files > 0 {
+            let covered = report.by_file.len();
+            let pct = (covered as f32 / total_files as f32 * 100.0) as u32;
+            ui.add_space(12.0);
+            ui.label(
+                egui::RichText::new(format!("{}% phase coverage", pct))
+                    .small()
+                    .weak()
+                    .color(egui::Color32::from_rgb(150, 155, 165)),
+            );
+        }
+    }
+}
+
+/// Draw the GSD phase navigator proportional bar.
+///
+/// Renders a horizontal bar where each segment width is proportional to the
+/// number of files in that phase. Clicking a segment sets GitDiff to that
+/// phase's commit range. Hovering shows a tooltip with phase details.
+pub(crate) fn draw_gsd_phase_navigator(ui: &mut egui::Ui, state: &mut crate::app::state::AppState) {
+    use crate::renderer::colors::gsd_phase_color;
+    use crate::core::pmat_types::PhaseStatus;
+    use crate::metrics::evo::git_walker::DiffWindow;
+
+    // Guard: only render in GsdPhase mode
+    if state.color_mode != ColorMode::GsdPhase {
+        return;
+    }
+
+    if state.gsd_phase_running {
+        ui.label(egui::RichText::new("Scanning GSD phases...").small().weak());
+        return;
+    }
+
+    let report = match &state.gsd_phase_report {
+        Some(r) => r.clone(),
+        None => {
+            ui.label(egui::RichText::new("No .planning/ directory found").small().weak());
+            return;
+        }
+    };
+
+    if report.phases.is_empty() {
+        ui.label(egui::RichText::new("No phases found in .planning/").small().weak());
+        return;
+    }
+
+    let total_files: usize = report.phases.iter().map(|p| p.files.len()).sum();
+    let total_width = ui.available_width();
+    let bar_height = 18.0;
+    const MIN_SEG_WIDTH: f32 = 40.0;
+
+    // Allocate space for the whole bar
+    let (bar_rect, _) = ui.allocate_exact_size(
+        egui::vec2(total_width, bar_height),
+        egui::Sense::hover(),
+    );
+
+    let painter = ui.painter();
+
+    // Compute segment widths
+    let n = report.phases.len();
+    let mut widths: Vec<f32> = report.phases.iter().map(|phase| {
+        if total_files == 0 {
+            total_width / n as f32
+        } else {
+            (phase.files.len() as f32 / total_files as f32) * total_width
+        }
+    }).collect();
+
+    // Apply minimum width, then redistribute remaining space
+    let forced_min: f32 = widths.iter().map(|&w| if w < MIN_SEG_WIDTH { MIN_SEG_WIDTH } else { w }).sum();
+    if forced_min > total_width {
+        // Not enough space: just give each segment equal width
+        let eq = total_width / n as f32;
+        for w in &mut widths {
+            *w = eq;
+        }
+    } else {
+        // Apply minimums and scale remaining proportionally
+        let mut remaining = total_width;
+        let mut free_indices: Vec<usize> = Vec::new();
+        let mut free_natural: f32 = 0.0;
+        for (i, w) in widths.iter_mut().enumerate() {
+            if *w < MIN_SEG_WIDTH {
+                *w = MIN_SEG_WIDTH;
+                remaining -= MIN_SEG_WIDTH;
+            } else {
+                free_indices.push(i);
+                free_natural += *w;
+            }
+        }
+        // Scale free segments to fill remaining space
+        if free_natural > 0.0 {
+            for &i in &free_indices {
+                widths[i] = widths[i] / free_natural * remaining;
+            }
+        }
+    }
+
+    // Draw segments and handle interaction
+    let mut x = bar_rect.left();
+    let mut new_selected: Option<usize> = state.selected_phase_idx;
+    let mut new_git_diff_window: Option<DiffWindow> = None;
+    let mut new_git_diff_requested = false;
+
+    for (idx, phase) in report.phases.iter().enumerate() {
+        let w = widths[idx];
+        let seg_rect = egui::Rect::from_min_size(
+            egui::pos2(x, bar_rect.top()),
+            egui::vec2(w, bar_height),
+        );
+
+        // Fill color
+        let fill_color = gsd_phase_color(phase.status);
+        painter.rect_filled(seg_rect, 0.0, fill_color);
+
+        // Border for in-progress (bright) or selected (contrasting)
+        let is_current = phase.status == PhaseStatus::InProgress;
+        let is_selected = state.selected_phase_idx == Some(idx);
+        if is_current {
+            painter.rect_stroke(
+                seg_rect,
+                0.0,
+                egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 220, 80)),
+                egui::StrokeKind::Inside,
+            );
+        } else if is_selected {
+            painter.rect_stroke(
+                seg_rect,
+                0.0,
+                egui::Stroke::new(1.0, egui::Color32::from_rgb(200, 200, 200)),
+                egui::StrokeKind::Inside,
+            );
+        }
+
+        // Label inside segment
+        let font_id = egui::FontId::monospace(9.0);
+        let label_color = egui::Color32::WHITE;
+        let short_label = format!("P{}", phase.number);
+        let text_pos = egui::pos2(x + 4.0, bar_rect.center().y - 3.0);
+        painter.text(
+            text_pos,
+            egui::Align2::LEFT_CENTER,
+            &short_label,
+            font_id.clone(),
+            label_color,
+        );
+        if w > 100.0 {
+            // Show phase name below the number
+            let name_preview: String = phase.name.chars().take(12).collect();
+            let name_text = if phase.name.len() > 12 { format!("{}..", name_preview) } else { name_preview };
+            painter.text(
+                egui::pos2(x + 4.0, bar_rect.center().y + 5.0),
+                egui::Align2::LEFT_CENTER,
+                name_text,
+                egui::FontId::monospace(8.0),
+                egui::Color32::from_rgba_unmultiplied(255, 255, 255, 180),
+            );
+        }
+
+        // Interaction: use ui.interact() on the segment rect
+        let seg_id = ui.id().with(("phase_seg", idx));
+        let seg_response = ui.interact(seg_rect, seg_id, egui::Sense::click());
+
+        if seg_response.clicked() {
+            new_selected = Some(idx);
+            if let Some((ref from, ref to)) = phase.commit_range {
+                new_git_diff_window = Some(DiffWindow::CommitRange {
+                    from: from.clone(),
+                    to: to.clone(),
+                });
+                new_git_diff_requested = true;
+            }
+        }
+
+        // Hover tooltip
+        let status_label = match phase.status {
+            PhaseStatus::Completed => "Completed",
+            PhaseStatus::InProgress => "In Progress",
+            PhaseStatus::Planned => "Planned",
+        };
+        let tooltip = format!(
+            "Phase {}: {}\nGoal: {}\nStatus: {}\nFiles: {}",
+            phase.number,
+            phase.name,
+            phase.goal,
+            status_label,
+            phase.files.len(),
+        );
+        seg_response.on_hover_text(egui::RichText::new(tooltip).monospace().size(10.0));
+
+        x += w;
+    }
+
+    // Apply mutations after iteration (borrow checker: report was cloned above)
+    state.selected_phase_idx = new_selected;
+    if let Some(window) = new_git_diff_window {
+        state.git_diff_window = window;
+        state.git_diff_requested = new_git_diff_requested;
+    }
+}
+
 /// Draw a per-mode color legend below the toolbar.
 ///
 /// Only rendered for modes that have a meaningful color scale (GitDiff, TdgGrade,
@@ -321,6 +549,12 @@ pub(crate) fn draw_color_legend(ui: &mut egui::Ui, state: &crate::app::state::Ap
             ui.horizontal(|ui| {
                 ui.add_space(4.0);
                 draw_risk_legend(ui);
+            });
+        }
+        ColorMode::GsdPhase => {
+            ui.horizontal(|ui| {
+                ui.add_space(4.0);
+                draw_gsd_phase_legend(ui, state);
             });
         }
         _ => {}

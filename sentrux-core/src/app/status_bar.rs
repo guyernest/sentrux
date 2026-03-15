@@ -38,6 +38,33 @@ fn draw_left_info(ui: &mut egui::Ui, state: &AppState) {
         } else {
             ui.label(egui::RichText::new(abs(path)).monospace());
         }
+        // In GsdPhase mode: append phase info to hover display
+        if state.color_mode == crate::layout::types::ColorMode::GsdPhase {
+            if let Some(report) = &state.gsd_phase_report {
+                if let Some(&phase_idx) = report.by_file.get(path.as_str()) {
+                    if let Some(phase) = report.phases.get(phase_idx) {
+                        use crate::core::pmat_types::PhaseStatus;
+                        let status_label = match phase.status {
+                            PhaseStatus::Completed => "Completed",
+                            PhaseStatus::InProgress => "In Progress",
+                            PhaseStatus::Planned => "Planned",
+                        };
+                        let status_color = match phase.status {
+                            PhaseStatus::Completed => egui::Color32::from_rgb(76, 153, 76),
+                            PhaseStatus::InProgress => egui::Color32::from_rgb(220, 165, 32),
+                            PhaseStatus::Planned => egui::Color32::from_rgb(70, 130, 180),
+                        };
+                        ui.colored_label(
+                            status_color,
+                            egui::RichText::new(format!(
+                                "Phase {}: {} ({})",
+                                phase.number, phase.name, status_label
+                            )).monospace().weak(),
+                        );
+                    }
+                }
+            }
+        }
     } else if let Some(path) = &state.selected_path {
         let (imports, calls, inherits) = edge_counts_for(state, path);
         let total = imports + calls + inherits;

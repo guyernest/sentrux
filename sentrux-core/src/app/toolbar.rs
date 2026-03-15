@@ -33,6 +33,7 @@ pub fn draw_toolbar(ui: &mut egui::Ui, state: &mut AppState) -> (bool, bool) {
         draw_visual_group(ui, state, &mut visual_changed);
 
         draw_git_diff_controls(ui, state);
+        draw_gsd_phase_controls(ui, state);
 
         ui.add_space(2.0);
         ui.separator();
@@ -274,6 +275,39 @@ pub fn draw_git_diff_controls(ui: &mut egui::Ui, state: &mut AppState) {
         ui.add_space(4.0);
         ui.label(
             egui::RichText::new("computing...")
+                .small()
+                .weak()
+                .color(egui::Color32::from_rgb(120, 160, 200)),
+        );
+    }
+}
+
+/// GSD phase controls row — only shown when ColorMode::GsdPhase is active.
+///
+/// Shows a "Refresh" button to re-trigger GSD phase parsing, plus a spinner
+/// when parsing is in progress.
+pub fn draw_gsd_phase_controls(ui: &mut egui::Ui, state: &mut AppState) {
+    if state.color_mode != ColorMode::GsdPhase {
+        return;
+    }
+    ui.separator();
+    ui.add_space(2.0);
+    ui.label(egui::RichText::new("GSD:").small().weak());
+
+    let can_refresh = state.root_path.is_some() && !state.gsd_phase_running && !state.scanning;
+    let btn_label = if state.gsd_phase_running { "Scanning..." } else { "Refresh" };
+    let btn = ui.add_enabled(
+        can_refresh,
+        egui::Button::new(egui::RichText::new(btn_label).small()),
+    );
+    if btn.clicked() {
+        state.gsd_phase_requested = true;
+    }
+
+    if state.gsd_phase_running {
+        ui.add_space(4.0);
+        ui.label(
+            egui::RichText::new("scanning...")
                 .small()
                 .weak()
                 .color(egui::Color32::from_rgb(120, 160, 200)),
