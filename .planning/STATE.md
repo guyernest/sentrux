@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-gsd-phase-overlay 04-02-PLAN.md
-last_updated: "2026-03-15T20:11:01.956Z"
+stopped_at: Completed 04-gsd-phase-overlay 04-03-PLAN.md
+last_updated: "2026-03-15T20:59:11.967Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 50
 ---
 
@@ -64,6 +64,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03-git-diff-overlay P03 | 50 | 2 tasks | 8 files |
 | Phase 04-gsd-phase-overlay P01 | 35 | 2 tasks | 16 files |
 | Phase 04-gsd-phase-overlay P02 | 3 | 2 tasks | 5 files |
+| Phase 04-gsd-phase-overlay P03 | 30 | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Recent decisions affecting current work:
 - [Phase 04-gsd-phase-overlay]: color_by_gsd_phase uses find_directory_match() from gsd_phase_adapter for directory prefix entries; NO_DATA_GRAY for unassociated files
 - [Phase 04-gsd-phase-overlay]: gsd_phase_running/requested added following git_diff pattern; selected_phase_idx persists across scans per CONTEXT.md
 - [Phase 04-gsd-phase-overlay]: clear_stale_state resets gsd_phase_report/running but NOT selected_phase_idx (user navigation persists)
+- [Phase 04-gsd-phase-overlay]: Phase click navigation switches color_mode to GitDiff immediately for visual feedback of phase changes
+- [Phase 04-gsd-phase-overlay]: Status bar used as treemap hover tooltip surface for GsdPhase info via draw_left_info() extension
 
 ### Pending Todos
 
@@ -128,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T20:11:01.954Z
-Stopped at: Completed 04-gsd-phase-overlay 04-02-PLAN.md
+Last session: 2026-03-15T20:59:11.965Z
+Stopped at: Completed 04-gsd-phase-overlay 04-03-PLAN.md
 Resume file: None
