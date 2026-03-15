@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-pmat-integration 02-01-PLAN.md
-last_updated: "2026-03-15T02:16:33.631Z"
+stopped_at: Completed 02-pmat-integration 02-02-PLAN.md
+last_updated: "2026-03-15T02:24:33.201Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 50
 ---
 
@@ -53,6 +53,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01-cleanup P01 | 5 | 2 tasks | 11 files |
 | Phase 01-cleanup P02 | 3 | 2 tasks | 3 files |
 | Phase 02-pmat-integration P01 | 5 | 2 tasks | 11 files |
+| Phase 02-pmat-integration P02 | 5 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 02-pmat-integration]: PmatReport by_path uses index into tdg.files (zero-copy lookup) not clone
 - [Phase 02-pmat-integration]: run_pmat_tdg accepts non-zero exit: PMAT exits 1 on critical defects but writes valid JSON
 - [Phase 02-pmat-integration]: Tarjan SCC .unwrap() replaced with .expect(invariant msg) to satisfy PMAT heuristic
+- [Phase 02-pmat-integration]: TdgGrade is default ColorMode: primary free mode, replaces Monochrome/Language as the first thing users see
+- [Phase 02-pmat-integration]: ColorMode serde(other) on Monochrome: old prefs with churn/risk/age/execdepth/blastradius deserialize safely to Monochrome
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T02:16:33.629Z
-Stopped at: Completed 02-pmat-integration 02-01-PLAN.md
+Last session: 2026-03-15T02:24:33.199Z
+Stopped at: Completed 02-pmat-integration 02-02-PLAN.md
 Resume file: None
