@@ -20,7 +20,7 @@ use crate::core::heat::HeatTracker;
 use crate::core::settings::ThemeConfig;
 use crate::layout::viewport::ViewportTransform;
 use crate::core::settings::Settings;
-use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport};
+use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
@@ -88,6 +88,9 @@ pub struct RenderContext<'a> {
     /// Git diff overlay report for GitDiff color mode.
     /// Set to None until Plan 03-02 wires it into AppState and populates RenderContext.
     pub git_diff_report: Option<&'a GitDiffReport>,
+    /// GSD phase overlay report for GsdPhase color mode.
+    /// Set to None until Plan 04-02 wires it into AppState and populates RenderContext.
+    pub gsd_phase_report: Option<&'a GsdPhaseReport>,
 }
 
 /// Orchestrate a single frame of rendering onto the canvas painter.

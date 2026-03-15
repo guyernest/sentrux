@@ -355,6 +355,7 @@ pub fn file_color(ctx: &RenderContext, path: &str) -> Color32 {
         ColorMode::Coverage => color_by_coverage(ctx, path),
         ColorMode::Risk => color_by_risk(ctx, path),
         ColorMode::GitDiff => color_by_git_diff(ctx, path),
+        ColorMode::GsdPhase => color_by_gsd_phase(ctx, path),
     }
 }
 
@@ -378,6 +379,30 @@ fn color_by_git_diff(ctx: &RenderContext, path: &str) -> Color32 {
     }
     let t = (data.raw_intensity() / report.max_intensity).clamp(0.0, 1.0) as f32;
     colors::git_diff_intensity_color(t)
+}
+
+/// GSD phase color mode: color files by which planning phase touches them.
+///
+/// - No report available → monochrome fallback (file_surface)
+/// - Exact path match in report → phase status color (green/amber/blue)
+/// - Directory prefix match → phase status color
+/// - No match → muted gray (GSDP-04: unassociated files)
+fn color_by_gsd_phase(ctx: &RenderContext, path: &str) -> Color32 {
+    let report = match ctx.gsd_phase_report {
+        Some(r) => r,
+        None => return ctx.theme_config.file_surface,
+    };
+    // Try exact path match first
+    if let Some(phase) = report.phase_for_file(path) {
+        return colors::gsd_phase_color(phase.status);
+    }
+    // Try directory prefix match
+    if let Some(idx) = crate::analysis::gsd_phase_adapter::find_directory_match(&report.by_file, path) {
+        let phase = &report.phases[idx];
+        return colors::gsd_phase_color(phase.status);
+    }
+    // File not associated with any phase — muted gray (GSDP-04)
+    colors::NO_DATA_GRAY
 }
 
 /// Coverage color mode: look up per-file line coverage percentage, return blue-to-green gradient.

@@ -29,6 +29,10 @@ pub enum ColorMode {
     /// Blue (recently unchanged) → orange (heavily changed); new files get teal.
     #[serde(rename = "GitDiff")]
     GitDiff,
+    /// Color by GSD planning phase (completed=green, in-progress=amber, planned=blue).
+    /// Unassociated files appear muted gray. Requires a .planning/ directory.
+    #[serde(rename = "GsdPhase")]
+    GsdPhase,
     /// Terminal pixel monochrome: flat neutral surface color, no per-file coloring.
     /// Style guide §10: "File blocks: one neutral surface color."
     /// Also used as the serde fallback for removed variants (Age, Churn, ExecDepth, BlastRadius).
@@ -47,6 +51,7 @@ impl ColorMode {
         ColorMode::Coverage,
         ColorMode::Risk,
         ColorMode::GitDiff,
+        ColorMode::GsdPhase,
         ColorMode::Monochrome,
     ];
 
@@ -60,6 +65,7 @@ impl ColorMode {
             ColorMode::Coverage => "Coverage",
             ColorMode::Risk => "Risk",
             ColorMode::GitDiff => "Git Diff",
+            ColorMode::GsdPhase => "GSD Phase",
             ColorMode::Monochrome => "Mono",
         }
     }
@@ -132,8 +138,8 @@ mod color_mode_tests {
     use super::*;
 
     #[test]
-    fn color_mode_all_has_exactly_8_variants() {
-        assert_eq!(ColorMode::ALL.len(), 8);
+    fn color_mode_all_has_exactly_9_variants() {
+        assert_eq!(ColorMode::ALL.len(), 9, "ALL should have 9 variants (including GsdPhase)");
     }
 
     #[test]
@@ -249,8 +255,43 @@ mod color_mode_tests {
     }
 
     #[test]
-    fn color_mode_all_has_8_variants_with_git_diff() {
-        assert_eq!(ColorMode::ALL.len(), 8, "ALL should have 8 variants after adding GitDiff");
+    fn color_mode_all_has_9_variants_with_gsd_phase() {
+        assert_eq!(ColorMode::ALL.len(), 9, "ALL should have 9 variants after adding GsdPhase");
+    }
+
+    // ── GsdPhase ColorMode tests ─────────────────────────────────────────
+
+    #[test]
+    fn color_mode_gsd_phase_exists_in_all() {
+        assert!(ColorMode::ALL.contains(&ColorMode::GsdPhase),
+            "ColorMode::ALL should contain GsdPhase");
+    }
+
+    #[test]
+    fn color_mode_gsd_phase_before_monochrome() {
+        let all = ColorMode::ALL;
+        let mono_pos = all.iter().position(|&m| m == ColorMode::Monochrome)
+            .expect("Monochrome must be in ALL");
+        let gsd_pos = all.iter().position(|&m| m == ColorMode::GsdPhase)
+            .expect("GsdPhase must be in ALL");
+        assert!(gsd_pos < mono_pos, "GsdPhase must appear before Monochrome in ALL");
+    }
+
+    #[test]
+    fn color_mode_gsd_phase_serializes_to_gsdphase() {
+        let serialized = serde_json::to_string(&ColorMode::GsdPhase).expect("serialize");
+        assert_eq!(serialized, "\"GsdPhase\"", "GsdPhase should serialize to 'GsdPhase'");
+    }
+
+    #[test]
+    fn color_mode_gsd_phase_deserializes() {
+        let val: ColorMode = serde_json::from_str("\"GsdPhase\"").expect("should deserialize");
+        assert_eq!(val, ColorMode::GsdPhase);
+    }
+
+    #[test]
+    fn color_mode_gsd_phase_label() {
+        assert_eq!(ColorMode::GsdPhase.label(), "GSD Phase");
     }
 }
 

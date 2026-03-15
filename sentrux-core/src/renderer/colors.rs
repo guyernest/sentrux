@@ -152,6 +152,48 @@ pub fn risk_color(
     Color32::from_rgb(r, g, b)
 }
 
+/// Map a GSD phase status to a Color32.
+///
+/// - `Completed`: muted green (phase delivered)
+/// - `InProgress`: amber/goldenrod (phase currently active)
+/// - `Planned`: steel blue (phase not yet started)
+pub fn gsd_phase_color(status: crate::core::pmat_types::PhaseStatus) -> Color32 {
+    use crate::core::pmat_types::PhaseStatus;
+    match status {
+        PhaseStatus::Completed  => Color32::from_rgb(76, 153, 76),   // muted green
+        PhaseStatus::InProgress => Color32::from_rgb(220, 165, 32),  // amber/goldenrod
+        PhaseStatus::Planned    => Color32::from_rgb(70, 130, 180),  // steel blue
+    }
+}
+
+#[cfg(test)]
+mod gsd_phase_color_tests {
+    use super::*;
+    use crate::core::pmat_types::PhaseStatus;
+
+    #[test]
+    fn gsd_phase_color_completed_is_greenish() {
+        let c = gsd_phase_color(PhaseStatus::Completed);
+        let [r, g, _b, _] = c.to_array();
+        assert!(g > r, "Completed phase should be greenish: r={} g={}", r, g);
+    }
+
+    #[test]
+    fn gsd_phase_color_in_progress_is_amber() {
+        let c = gsd_phase_color(PhaseStatus::InProgress);
+        let [r, g, b, _] = c.to_array();
+        assert!(r > b, "InProgress phase amber should have r > b: r={} b={}", r, b);
+        assert!(g > b, "InProgress phase amber should have g > b: g={} b={}", g, b);
+    }
+
+    #[test]
+    fn gsd_phase_color_planned_is_bluish() {
+        let c = gsd_phase_color(PhaseStatus::Planned);
+        let [r, _g, b, _] = c.to_array();
+        assert!(b > r, "Planned phase should be bluish: r={} b={}", r, b);
+    }
+}
+
 #[cfg(test)]
 mod git_diff_color_tests {
     use super::*;

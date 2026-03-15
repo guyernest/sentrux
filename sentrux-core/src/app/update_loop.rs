@@ -269,6 +269,7 @@ impl SentruxApp {
             root_path: self.state.root_path.as_deref(),
             max_risk_raw: self.state.max_risk_raw,
             git_diff_report: self.state.git_diff_report.as_ref(),
+            gsd_phase_report: self.state.gsd_phase_report.as_ref(),
         };
         renderer::render_frame(&painter, canvas_rect, &render_ctx);
 
