@@ -21,7 +21,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **OVRL-01**: User can switch between overlay modes via toolbar toggle (TDG / Git Diff / GSD Phase)
 - [ ] **OVRL-02**: Active overlay mode has a visible color legend explaining the color mapping
-- [ ] **OVRL-03**: Overlay mode persists across sessions (saved in preferences)
+- [x] **OVRL-03**: Overlay mode persists across sessions (saved in preferences)
 
 ### Git Diff Overlay
 
@@ -29,7 +29,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **GDIT-02**: Time window options include at minimum: 15 minutes, 1 hour, 1 day, 1 week
 - [x] **GDIT-03**: Changed files show intensity based on number of lines changed (hotter = more changes)
 - [x] **GDIT-04**: Unchanged files are visually muted so changed files stand out
-- [ ] **GDIT-05**: Git diff computation runs on a background thread without freezing the UI
+- [x] **GDIT-05**: Git diff computation runs on a background thread without freezing the UI
 
 ### GSD Phase Overlay
 
@@ -106,12 +106,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PMAT-07 | Phase 2 | Complete |
 | OVRL-01 | Phase 3 | Pending |
 | OVRL-02 | Phase 3 | Pending |
-| OVRL-03 | Phase 3 | Pending |
+| OVRL-03 | Phase 3 | Complete |
 | GDIT-01 | Phase 3 | Complete |
 | GDIT-02 | Phase 3 | Complete |
 | GDIT-03 | Phase 3 | Complete |
 | GDIT-04 | Phase 3 | Complete |
-| GDIT-05 | Phase 3 | Pending |
+| GDIT-05 | Phase 3 | Complete |
 | GSDP-01 | Phase 4 | Pending |
 | GSDP-02 | Phase 4 | Pending |
 | GSDP-03 | Phase 4 | Pending |

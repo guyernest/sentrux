@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-git-diff-overlay 03-01-PLAN.md
-last_updated: "2026-03-15T14:24:05.867Z"
+stopped_at: Completed 03-git-diff-overlay 03-02-PLAN.md
+last_updated: "2026-03-15T14:29:50.020Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 50
 ---
 
@@ -60,6 +60,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02.1-rust-deep-analysis P02 | 3 | 2 tasks | 8 files |
 | Phase 02.1-rust-deep-analysis P03 | 90 | 2 tasks | 12 files |
 | Phase 03-git-diff-overlay P01 | 7 | 2 tasks | 10 files |
+| Phase 03-git-diff-overlay P02 | 4 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 03-git-diff-overlay]: GitDiff serializes to 'GitDiff' (PascalCase) via serde(rename) to distinguish from lowercase rename_all convention
 - [Phase 03-git-diff-overlay]: raw_intensity = sqrt(lines * commits): geometric mean prevents either volume or frequency from dominating
 - [Phase 03-git-diff-overlay]: muted gray (50,52,55) for files not in git diff report: distinguishes unchanged-in-window from no-data (GDIT-04)
+- [Phase 03-git-diff-overlay]: git_diff_window and git_diff_custom_n not reset on new scan — user selections survive project changes
+- [Phase 03-git-diff-overlay]: draw_git_diff_section only shown when color_mode == ColorMode::GitDiff to avoid noise in other modes
 
 ### Pending Todos
 
@@ -113,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T14:24:05.865Z
-Stopped at: Completed 03-git-diff-overlay 03-01-PLAN.md
+Last session: 2026-03-15T14:29:50.018Z
+Stopped at: Completed 03-git-diff-overlay 03-02-PLAN.md
 Resume file: None

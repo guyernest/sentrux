@@ -80,7 +80,7 @@ Plans:
   3. The time window selector in the toolbar offers at minimum 15 min, 1 h, 1 day, and 1 week; changing the window updates the overlay without freezing the UI
   4. A color legend below the toolbar explains the current overlay's color mapping
   5. The selected overlay mode is restored when the app is reopened
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 03-01-PLAN.md — Types, git walker extension, color functions, and ColorMode::GitDiff variant
@@ -108,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 | 1. Cleanup | 2/2 | Complete    | 2026-03-15 |
 | 2. PMAT Integration | 3/4 | Complete    | 2026-03-15 |
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
-| 3. Git Diff Overlay | 0/3 | Planning complete | - |
+| 3. Git Diff Overlay | 2/3 | In Progress|  |
 | 4. GSD Phase Overlay | 0/TBD | Not started | - |
