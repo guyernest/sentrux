@@ -165,6 +165,8 @@ pub struct AppState {
     pub coverage_report: Option<CoverageReport>,
     /// True while on-demand coverage background thread is running
     pub coverage_running: bool,
+    /// Pre-computed max raw risk value for normalization — updated when reports change
+    pub max_risk_raw: f64,
     /// Community BFS highlight — set of file paths in the selected node's community subgraph
     pub community_highlight: Option<std::collections::HashSet<String>>,
     /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
@@ -282,6 +284,7 @@ impl AppState {
             clippy_report: None,
             coverage_report: None,
             coverage_running: false,
+            max_risk_raw: 1.0,
             community_highlight: None,
             impact_files: None,
             folder_picker_requested: false,

@@ -5,9 +5,7 @@
 
 use crate::layout::types::{ColorMode, EdgeFilter, FocusMode, LayoutMode, ScaleMode, SizeMode};
 use crate::core::settings::Theme;
-use crate::license;
 use super::state::AppState;
-use std::sync::OnceLock;
 
 /// Draw the toolbar panel. Returns (layout_changed, visual_changed).
 /// layout_changed = size/scale/layout mode changed (needs re-layout).
@@ -95,6 +93,9 @@ fn size_mode_label(mode: SizeMode) -> &'static str {
         SizeMode::Comments => "Comments",
         SizeMode::Blanks => "Blanks",
         SizeMode::Heat => "Heat",
+        SizeMode::PageRank => "PageRank",
+        SizeMode::Centrality => "Centrality",
+        SizeMode::ClippyCount => "Clippy",
         SizeMode::Uniform => "Uniform",
     }
 }
@@ -103,6 +104,7 @@ fn size_mode_label(mode: SizeMode) -> &'static str {
 const SIZE_MODES: &[SizeMode] = &[
     SizeMode::Lines, SizeMode::Logic, SizeMode::Funcs,
     SizeMode::Comments, SizeMode::Blanks, SizeMode::Heat,
+    SizeMode::PageRank, SizeMode::Centrality, SizeMode::ClippyCount,
     SizeMode::Uniform,
 ];
 
@@ -147,14 +149,9 @@ fn draw_scale_mode_combo(ui: &mut egui::Ui, state: &mut AppState, layout_changed
         });
 }
 
-/// Cached cargo-llvm-cov availability — checked at most once per process.
-static LLVM_COV_AVAILABLE: OnceLock<bool> = OnceLock::new();
-
-/// Check whether cargo-llvm-cov is available (cached).
+/// Check whether cargo-llvm-cov is available (cached in pmat_adapter).
 fn llvm_cov_available() -> bool {
-    *LLVM_COV_AVAILABLE.get_or_init(|| {
-        crate::analysis::pmat_adapter::check_llvm_cov_available()
-    })
+    crate::analysis::pmat_adapter::check_llvm_cov_available()
 }
 
 /// Visual group: Color mode (with Coverage gating) and Theme combo boxes.

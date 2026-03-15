@@ -143,7 +143,7 @@ fn layout_thread_processes_latest_request_only() {
                 focus_mode: crate::layout::types::FocusMode::All,
                 entry_point_files: std::sync::Arc::new(std::collections::HashSet::new()),
                 hidden_paths: std::sync::Arc::new(std::collections::HashSet::new()),
-                impact_files: None,
+                impact_files: None, external_weights: None,
             })
             .unwrap();
     }
@@ -233,7 +233,7 @@ fn layout_version_not_bumped_on_full_channel() {
         focus_mode: crate::layout::types::FocusMode::All,
         entry_point_files: std::sync::Arc::new(std::collections::HashSet::new()),
         hidden_paths: std::sync::Arc::new(std::collections::HashSet::new()),
-        impact_files: None,
+        impact_files: None, external_weights: None,
     };
     tx.try_send(req).unwrap();
     layout_version = 1;
@@ -253,7 +253,7 @@ fn layout_version_not_bumped_on_full_channel() {
         focus_mode: crate::layout::types::FocusMode::All,
         entry_point_files: std::sync::Arc::new(std::collections::HashSet::new()),
         hidden_paths: std::sync::Arc::new(std::collections::HashSet::new()),
-        impact_files: None,
+        impact_files: None, external_weights: None,
     };
     match tx.try_send(req2) {
         Ok(()) => {

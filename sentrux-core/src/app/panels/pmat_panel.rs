@@ -238,7 +238,7 @@ fn draw_health_summary(ui: &mut Ui, report: &PmatReport) {
         egui::CollapsingHeader::new(
             egui::RichText::new("Categories").monospace().size(9.0),
         )
-        .id_source("pmat_categories")
+        .id_salt("pmat_categories")
         .show(ui, |ui| {
             for (name, cat) in &repo.categories {
                 let status_color = match cat.status.as_str() {
@@ -299,7 +299,7 @@ fn draw_file_detail(ui: &mut Ui, report: &PmatReport, path: &str) {
     egui::CollapsingHeader::new(
         egui::RichText::new("Component Scores").monospace().size(9.0),
     )
-    .id_source("pmat_components")
+    .id_salt("pmat_components")
     .default_open(true)
     .show(ui, |ui| {
         score_row(ui, "Structural", score.structural_complexity);
@@ -315,7 +315,7 @@ fn draw_file_detail(ui: &mut Ui, report: &PmatReport, path: &str) {
         egui::CollapsingHeader::new(
             egui::RichText::new("Penalties").monospace().size(9.0),
         )
-        .id_source("pmat_penalties")
+        .id_salt("pmat_penalties")
         .show(ui, |ui| {
             for p in &score.penalties_applied {
                 ui.label(

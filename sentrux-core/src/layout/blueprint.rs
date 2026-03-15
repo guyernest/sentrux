@@ -61,6 +61,7 @@ pub fn layout_blueprint(
         entry_point_files: cfg.entry_point_files,
         hidden_paths: cfg.hidden_paths,
         impact_files: cfg.impact_files,
+        external_weights: cfg.external_weights,
     };
     let mut weights: HashMap<String, f64> = HashMap::new();
     crate::layout::weight::precompute_weights(root, &wc, &mut weights);

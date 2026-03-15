@@ -108,18 +108,23 @@ pub fn run_graph_metrics(root: &str, scan_gen: u64) -> Option<GraphMetricsReport
     Some(GraphMetricsReport::from_output(output))
 }
 
+/// Cached cargo-llvm-cov availability check — probes once per process.
+static LLVM_COV_AVAILABLE: OnceLock<bool> = OnceLock::new();
+
 /// Check whether `cargo llvm-cov` is available on PATH.
 ///
 /// Returns `true` if `cargo llvm-cov --version` exits successfully.
-/// Does not panic.
+/// Result is cached for the process lifetime.
 pub fn check_llvm_cov_available() -> bool {
-    Command::new("cargo")
-        .args(["llvm-cov", "--version"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+    *LLVM_COV_AVAILABLE.get_or_init(|| {
+        Command::new("cargo")
+            .args(["llvm-cov", "--version"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    })
 }
 
 /// Run `cargo llvm-cov --json --summary-only --ignore-run-fail` against the
@@ -220,7 +225,17 @@ pub fn run_clippy_warnings(root: &str) -> Option<ClippyReport> {
             *entry.by_category.entry(lint_category(&lint_id).to_string()).or_insert(0) += 1;
         }
     }
-    Some(ClippyReport { by_file })
+    // Build basename index for cross-index joins with graph-metrics
+    let mut by_basename: HashMap<String, FileClippyData> = HashMap::new();
+    for (path, data) in &by_file {
+        if let Some(base) = path.rsplit('/').next() {
+            by_basename.entry(base.to_string()).or_default().total += data.total;
+            for (cat, count) in &data.by_category {
+                *by_basename.entry(base.to_string()).or_default().by_category.entry(cat.clone()).or_insert(0) += count;
+            }
+        }
+    }
+    Some(ClippyReport { by_file, by_basename })
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────

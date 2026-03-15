@@ -88,9 +88,19 @@ pub fn coverage_color(line_pct: f64) -> Color32 {
     Color32::from_rgb(r, g, b)
 }
 
-/// Combine PageRank, coverage, and clippy warning count into a risk color.
+/// Compute raw risk value from individual signals.
 ///
-/// Risk formula: `raw = pagerank * (1 - coverage_pct/100) * (1 + ln(clippy_count+1)/5)`
+/// Formula: `pagerank * (1 - coverage_pct/100) * (1 + ln(clippy_count+1)/5)`
+///
+/// Used by both `risk_color` (per-file) and `compute_max_risk_raw` (normalization).
+pub fn compute_raw_risk(pagerank: f64, coverage_pct: f64, clippy_count: u32) -> f64 {
+    let pr = pagerank.clamp(0.0, 1.0);
+    let uncovered = 1.0 - coverage_pct.clamp(0.0, 100.0) / 100.0;
+    let lint_factor = 1.0 + (clippy_count as f64 + 1.0).ln() / 5.0;
+    pr * uncovered * lint_factor
+}
+
+/// Combine PageRank, coverage, and clippy warning count into a risk color.
 ///
 /// Normalized using `max_raw` (project-level maximum raw risk). If `max_raw <= 0.0`,
 /// defaults to `1.0` to avoid division by zero.
@@ -102,10 +112,11 @@ pub fn risk_color(
     clippy_count: Option<u32>,
     max_raw: f64,
 ) -> Color32 {
-    let pr = pagerank.unwrap_or(0.0).clamp(0.0, 1.0);
-    let uncovered = 1.0 - coverage_pct.unwrap_or(50.0).clamp(0.0, 100.0) / 100.0;
-    let lint_factor = 1.0 + (clippy_count.unwrap_or(0) as f64 + 1.0).ln() / 5.0;
-    let raw = pr * uncovered * lint_factor;
+    let raw = compute_raw_risk(
+        pagerank.unwrap_or(0.0),
+        coverage_pct.unwrap_or(50.0),
+        clippy_count.unwrap_or(0),
+    );
     let norm = if max_raw <= 0.0 { 1.0 } else { max_raw };
     let t = (raw / norm).clamp(0.0, 1.0) as f32;
     // cool (low risk = green) → hot (high risk = red)

@@ -307,6 +307,12 @@ pub enum SizeMode {
     Blanks,
     /// Size by live edit heat value
     Heat,
+    /// Size by PMAT PageRank score (architecturally important files appear larger)
+    PageRank,
+    /// Size by degree centrality (highly connected files appear larger)
+    Centrality,
+    /// Size by clippy warning count (files with more warnings appear larger)
+    ClippyCount,
     /// Equal size for all files
     Uniform,
 }

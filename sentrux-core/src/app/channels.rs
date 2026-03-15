@@ -113,6 +113,9 @@ pub struct LayoutRequest {
     /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
     /// Wrapped in Arc so cloning from AppState is O(1) atomic increment.
     pub impact_files: Option<Arc<HashSet<String>>>,
+    /// External per-file weights for analysis-backed SizeModes (PageRank, Centrality, ClippyCount).
+    /// Built from analysis reports, keyed by file path.
+    pub external_weights: Option<std::collections::HashMap<String, f64>>,
 }
 
 /// Messages from the layout thread to the main UI thread.

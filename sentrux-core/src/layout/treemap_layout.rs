@@ -47,6 +47,7 @@ pub fn layout_treemap(
         min_child_weight: cfg.settings.min_child_weight,
         focus_mode: cfg.focus_mode, entry_point_files: cfg.entry_point_files,
         hidden_paths: cfg.hidden_paths, impact_files: cfg.impact_files,
+        external_weights: cfg.external_weights,
     };
     weight::precompute_weights(root, &wc, &mut weights);
 

@@ -240,6 +240,8 @@ pub struct CoverageReport {
     pub files: Vec<CoverageFileEntry>,
     /// scan-root-relative path → index into `files`
     pub by_path: HashMap<String, usize>,
+    /// bare filename → index into `files` (for cross-index joins with graph-metrics)
+    pub by_basename: HashMap<String, usize>,
 }
 
 impl CoverageReport {
@@ -250,6 +252,7 @@ impl CoverageReport {
     pub fn from_output(output: CoverageOutput, scan_root: &str) -> Option<Self> {
         let files = output.data.into_iter().next()?.files;
         let mut by_path = HashMap::with_capacity(files.len());
+        let mut by_basename = HashMap::with_capacity(files.len());
         let root_with_sep = if scan_root.ends_with('/') {
             scan_root.to_string()
         } else {
@@ -258,9 +261,12 @@ impl CoverageReport {
         for (i, f) in files.iter().enumerate() {
             if let Some(rel) = f.filename.strip_prefix(&root_with_sep) {
                 by_path.insert(rel.to_string(), i);
+                if let Some(base) = rel.rsplit('/').next() {
+                    by_basename.insert(base.to_string(), i);
+                }
             }
         }
-        Some(CoverageReport { files, by_path })
+        Some(CoverageReport { files, by_path, by_basename })
     }
 }
 
@@ -279,6 +285,8 @@ pub struct FileClippyData {
 pub struct ClippyReport {
     /// scan-root-relative path → per-file warning data
     pub by_file: HashMap<String, FileClippyData>,
+    /// bare filename → per-file warning data (for cross-index joins with graph-metrics)
+    pub by_basename: HashMap<String, FileClippyData>,
 }
 
 /// Map a clippy lint ID to a semantic category.
@@ -620,7 +628,17 @@ mod tests {
                 *entry.by_category.entry(lint_category(&lint_id).to_string()).or_insert(0) += 1;
             }
         }
-        ClippyReport { by_file }
+        let mut by_basename: HashMap<String, FileClippyData> = HashMap::new();
+        for (path, data) in &by_file {
+            if let Some(base) = path.rsplit('/').next() {
+                let entry = by_basename.entry(base.to_string()).or_default();
+                entry.total += data.total;
+                for (cat, count) in &data.by_category {
+                    *entry.by_category.entry(cat.clone()).or_insert(0) += count;
+                }
+            }
+        }
+        ClippyReport { by_file, by_basename }
     }
 
     #[test]

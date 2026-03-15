@@ -66,6 +66,9 @@ pub struct WeightConfig<'a> {
     pub hidden_paths: &'a HashSet<String>,
     /// Pre-computed impact set for ImpactRadius focus mode
     pub impact_files: Option<&'a HashSet<String>>,
+    /// External per-file weights for analysis-backed SizeModes (PageRank, Centrality, ClippyCount).
+    /// Keyed by file path. Built from analysis reports before layout computation.
+    pub external_weights: Option<&'a HashMap<String, f64>>,
 }
 
 /// Look up the precomputed weight for a node from the cache. Returns 0.0 if absent.
@@ -94,7 +97,12 @@ pub fn apply_scale(value: f64, mode: ScaleMode) -> f64 {
 /// Extract weight from FileNode based on size mode.
 /// `heat_map` provides live heat values from HeatTracker (keyed by file path).
 /// Required for SizeMode::Heat — without it, Heat falls back to Uniform.
-pub fn get_size_weight(node: &FileNode, mode: SizeMode, heat_map: Option<&std::collections::HashMap<String, f64>>) -> f64 {
+pub fn get_size_weight(
+    node: &FileNode,
+    mode: SizeMode,
+    heat_map: Option<&std::collections::HashMap<String, f64>>,
+    external_weights: Option<&std::collections::HashMap<String, f64>>,
+) -> f64 {
     match mode {
         SizeMode::Lines => (node.lines as f64).max(1.0),
         SizeMode::Logic => (node.logic as f64).max(1.0),
@@ -102,12 +110,19 @@ pub fn get_size_weight(node: &FileNode, mode: SizeMode, heat_map: Option<&std::c
         SizeMode::Comments => (node.comments as f64).max(1.0),
         SizeMode::Blanks => (node.blanks as f64).max(1.0),
         SizeMode::Heat => {
-            // BUG 1 fix: use live heat from HeatTracker instead of dead node.heat field
             let h = heat_map
                 .and_then(|m| m.get(&node.path))
                 .copied()
                 .unwrap_or(0.0);
             (h * 100.0 + 1.0).max(1.0)
+        }
+        SizeMode::PageRank | SizeMode::Centrality | SizeMode::ClippyCount => {
+            // External analysis-backed weights, pre-built from reports
+            external_weights
+                .and_then(|m| m.get(&node.path))
+                .copied()
+                .map(|v| (v * 1000.0 + 1.0).max(1.0)) // Scale up small values (PageRank ~0.01)
+                .unwrap_or(1.0) // Files without data get uniform size
         }
         SizeMode::Uniform => 1.0,
     }
@@ -201,7 +216,7 @@ fn precompute_file_weight(
         cache.insert(node.path.clone(), 0.0);
         return;
     }
-    let raw = get_size_weight(node, wc.size_mode, wc.heat_map);
+    let raw = get_size_weight(node, wc.size_mode, wc.heat_map, wc.external_weights);
     let w = apply_scale(raw, wc.scale_mode);
     cache.insert(node.path.clone(), w.max(wc.min_child_weight));
 }
@@ -262,8 +277,19 @@ mod tests {
             sa: None,
             children: None,
         };
-        assert_eq!(get_size_weight(&node, SizeMode::Uniform, None), 1.0);
-        assert_eq!(get_size_weight(&node, SizeMode::Lines, None), 500.0);
-        assert_eq!(get_size_weight(&node, SizeMode::Funcs, None), 10.0);
+        assert_eq!(get_size_weight(&node, SizeMode::Uniform, None, None), 1.0);
+        assert_eq!(get_size_weight(&node, SizeMode::Lines, None, None), 500.0);
+        assert_eq!(get_size_weight(&node, SizeMode::Funcs, None, None), 10.0);
+
+        // External weight modes fall back to 1.0 without data
+        assert_eq!(get_size_weight(&node, SizeMode::PageRank, None, None), 1.0);
+        assert_eq!(get_size_weight(&node, SizeMode::Centrality, None, None), 1.0);
+        assert_eq!(get_size_weight(&node, SizeMode::ClippyCount, None, None), 1.0);
+
+        // With external weights provided (key must match node.path)
+        let mut ext = HashMap::new();
+        ext.insert("test.rs".to_string(), 0.05); // typical PageRank
+        assert!((get_size_weight(&node, SizeMode::PageRank, None, Some(&ext)) - 51.0).abs() < 0.01);
+        // 0.05 * 1000 + 1 = 51.0
     }
 }

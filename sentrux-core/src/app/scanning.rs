@@ -57,6 +57,12 @@ impl SentruxApp {
                 ScanMsg::CoverageReady(report) => {
                     self.state.coverage_report = Some(report);
                     self.state.coverage_running = false;
+                    // Recompute risk normalization with new coverage data
+                    self.state.max_risk_raw = crate::renderer::rects::compute_max_risk_raw(
+                        self.state.graph_metrics_report.as_ref(),
+                        self.state.coverage_report.as_ref(),
+                        self.state.clippy_report.as_ref(),
+                    );
                     ctx.request_repaint();
                 }
                 ScanMsg::CoverageError(msg) => {
@@ -97,6 +103,12 @@ impl SentruxApp {
         self.state.pmat_report = reports.pmat;
         self.state.graph_metrics_report = reports.graph_metrics;
         self.state.clippy_report = reports.clippy;
+        // Recompute max risk normalization
+        self.state.max_risk_raw = crate::renderer::rects::compute_max_risk_raw(
+            self.state.graph_metrics_report.as_ref(),
+            self.state.coverage_report.as_ref(),
+            self.state.clippy_report.as_ref(),
+        );
         // Reset coverage on new scan — old coverage data is stale
         self.state.coverage_report = None;
         self.state.coverage_running = false;
@@ -367,6 +379,47 @@ impl SentruxApp {
             entry_point_files: Arc::clone(&self.state.entry_point_files),
             hidden_paths: Arc::clone(&self.state.hidden_paths),
             impact_files: self.state.impact_files.clone(),
+            external_weights: self.build_external_weights(),
+        }
+    }
+
+    /// Build per-file external weights map from analysis reports for the current SizeMode.
+    /// Returns None if the current SizeMode doesn't use external data.
+    fn build_external_weights(&self) -> Option<std::collections::HashMap<String, f64>> {
+        use crate::layout::types::SizeMode;
+        match self.state.size_mode {
+            SizeMode::PageRank => {
+                let gm = self.state.graph_metrics_report.as_ref()?;
+                let mut map = std::collections::HashMap::new();
+                // Graph-metrics uses bare filenames; expand to all matching snapshot paths
+                for (path, _) in &self.state.file_index {
+                    let basename = path.rsplit('/').next().unwrap_or(path);
+                    if let Some(&idx) = gm.by_filename.get(basename) {
+                        map.insert(path.clone(), gm.data.nodes[idx].pagerank);
+                    }
+                }
+                Some(map)
+            }
+            SizeMode::Centrality => {
+                let gm = self.state.graph_metrics_report.as_ref()?;
+                let mut map = std::collections::HashMap::new();
+                for (path, _) in &self.state.file_index {
+                    let basename = path.rsplit('/').next().unwrap_or(path);
+                    if let Some(&idx) = gm.by_filename.get(basename) {
+                        map.insert(path.clone(), gm.data.nodes[idx].degree_centrality);
+                    }
+                }
+                Some(map)
+            }
+            SizeMode::ClippyCount => {
+                let clippy = self.state.clippy_report.as_ref()?;
+                let mut map = std::collections::HashMap::new();
+                for (path, data) in &clippy.by_file {
+                    map.insert(path.clone(), data.total as f64);
+                }
+                Some(map)
+            }
+            _ => None,
         }
     }
 

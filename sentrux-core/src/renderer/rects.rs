@@ -399,33 +399,31 @@ fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
 
 /// Compute the maximum raw risk value across all files in graph-metrics.
 /// Used to normalize risk coloring so the riskiest file is always maximally red.
-/// Called once per frame when building RenderContext.
-pub fn compute_max_risk_raw(ctx: &RenderContext) -> f64 {
-    let gm = match ctx.graph_metrics_report {
+/// Called once when reports change (not per-frame).
+pub fn compute_max_risk_raw(
+    gm: Option<&crate::core::pmat_types::GraphMetricsReport>,
+    cov: Option<&crate::core::pmat_types::CoverageReport>,
+    clippy: Option<&crate::core::pmat_types::ClippyReport>,
+) -> f64 {
+    let gm = match gm {
         Some(gm) => gm,
         None => return 1.0,
     };
     let mut max = 0.0_f64;
     for node in &gm.data.nodes {
-        let pr = node.pagerank.clamp(0.0, 1.0);
-        let uncovered = 1.0 - ctx.coverage_report
-            .and_then(|cov| {
-                // Graph-metrics uses bare filenames; try matching against coverage by_path basenames
-                cov.by_path.iter()
-                    .find(|(k, _)| k.rsplit('/').next() == Some(&node.name))
-                    .map(|(_, &idx)| cov.files[idx].summary.lines.percent)
-            })
-            .unwrap_or(50.0)
-            .clamp(0.0, 100.0) / 100.0;
-        let clippy_count = ctx.clippy_report
-            .and_then(|r| {
-                r.by_file.iter()
-                    .find(|(k, _)| k.rsplit('/').next() == Some(&node.name))
-                    .map(|(_, d)| d.total)
-            })
+        // Use consistent basename strategy matching color_by_risk
+        let basename = &node.name;
+
+        let coverage_pct = cov
+            .and_then(|c| c.by_basename.get(basename.as_str()).map(|&idx| c.files[idx].summary.lines.percent))
+            .unwrap_or(50.0);
+
+        let clippy_count = clippy
+            .and_then(|r| r.by_basename.get(basename.as_str()))
+            .map(|d| d.total)
             .unwrap_or(0);
-        let lint_factor = 1.0 + (clippy_count as f64 + 1.0).ln() / 5.0;
-        let raw = pr * uncovered * lint_factor;
+
+        let raw = colors::compute_raw_risk(node.pagerank, coverage_pct, clippy_count);
         if raw > max { max = raw; }
     }
     if max <= 0.0 { 1.0 } else { max }

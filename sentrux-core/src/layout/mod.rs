@@ -50,6 +50,8 @@ pub struct LayoutConfig<'a> {
     pub hidden_paths: &'a HashSet<String>,
     /// Pre-computed impact set for ImpactRadius focus mode
     pub impact_files: Option<&'a HashSet<String>>,
+    /// External per-file weights for analysis-backed SizeModes (PageRank, Centrality, ClippyCount)
+    pub external_weights: Option<&'a std::collections::HashMap<String, f64>>,
 }
 
 /// Find a subtree node by path. Used for drill-down navigation.

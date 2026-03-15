@@ -27,7 +27,7 @@ fn layout(
     let cfg = LayoutConfig {
         size_mode, scale_mode, layout_mode,
         heat_map: None, settings: &settings, focus_mode: &focus,
-        entry_point_files: &entry, hidden_paths: &hidden, impact_files: None,
+        entry_point_files: &entry, hidden_paths: &hidden, impact_files: None, external_weights: None,
     };
     compute_layout_from_snapshot(snap, vw, vh, None, &cfg)
 }

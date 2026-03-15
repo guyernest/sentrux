@@ -274,6 +274,7 @@ pub(crate) fn layout_thread(rx: Receiver<LayoutRequest>, tx: Sender<LayoutMsg>) 
             entry_point_files: &*latest.entry_point_files,
             hidden_paths: &*latest.hidden_paths,
             impact_files: latest.impact_files.as_deref(),
+            external_weights: latest.external_weights.as_ref(),
         };
         let rd = crate::layout::compute_layout_from_snapshot(
             &latest.snapshot,
