@@ -80,6 +80,14 @@ impl SentruxApp {
                     self.state.git_diff_running = false;
                     ctx.request_repaint();
                 }
+                ScanMsg::GsdPhaseReady(report) => {
+                    self.state.gsd_phase_report = Some(report);
+                    ctx.request_repaint();
+                }
+                ScanMsg::GsdPhaseError(msg) => {
+                    eprintln!("[gsd-phase] {msg}");
+                    ctx.request_repaint();
+                }
             }
         }
     }

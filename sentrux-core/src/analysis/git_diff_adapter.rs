@@ -14,7 +14,7 @@ use crate::metrics::evo::git_walker::{walk_git_log_windowed, DiffWindow};
 /// Called from a background thread spawned by `draw_panels::maybe_spawn_git_diff_thread`.
 pub fn compute_git_diff_report(root: &str, window: DiffWindow) -> Result<GitDiffReport, String> {
     let root_path = std::path::Path::new(root);
-    let walk = walk_git_log_windowed(root_path, window)?;
+    let walk = walk_git_log_windowed(root_path, window.clone())?;
     Ok(GitDiffReport::from_walk(walk.records, walk.new_file_paths, window))
 }
 

@@ -333,6 +333,7 @@ fn scanner_thread_sends_complete() {
             Ok(ScanMsg::Error(e, _gen)) => panic!("Scanner error: {}", e),
             Ok(ScanMsg::CoverageReady(_)) | Ok(ScanMsg::CoverageError(_)) => continue,
             Ok(ScanMsg::GitDiffReady(_)) | Ok(ScanMsg::GitDiffError(_)) => continue,
+            Ok(ScanMsg::GsdPhaseReady(_)) | Ok(ScanMsg::GsdPhaseError(_)) => continue,
             Err(_) => continue,
         }
     }

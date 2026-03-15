@@ -9,7 +9,7 @@ use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::layout::types::ColorMode;
-use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport};
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport};
 use crate::metrics::evo::git_walker::DiffWindow;
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
@@ -170,6 +170,8 @@ pub struct AppState {
     pub git_diff_report: Option<GitDiffReport>,
     /// True while on-demand git diff background thread is running
     pub git_diff_running: bool,
+    /// GSD phase overlay report — None until parsed from .planning/ directory
+    pub gsd_phase_report: Option<GsdPhaseReport>,
     /// Active diff window selection for git diff overlay
     pub git_diff_window: DiffWindow,
     /// Flag set by toolbar when "Run Git Diff" is requested.
@@ -298,6 +300,7 @@ impl AppState {
             coverage_running: false,
             git_diff_report: None,
             git_diff_running: false,
+            gsd_phase_report: None,
             git_diff_window: DiffWindow::default(),
             git_diff_requested: false,
             git_diff_custom_n: 10,

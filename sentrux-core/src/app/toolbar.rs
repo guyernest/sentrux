@@ -241,10 +241,10 @@ pub fn draw_git_diff_controls(ui: &mut egui::Ui, state: &mut AppState) {
     ui.add_space(2.0);
     ui.label(egui::RichText::new("Window:").small().weak());
 
-    for (window, label) in DiffWindow::PRESETS {
+    for (window, label) in DiffWindow::preset_slice() {
         let selected = state.git_diff_window == *window;
         if ui.selectable_label(selected, *label).clicked() {
-            state.git_diff_window = *window;
+            state.git_diff_window = window.clone();
             state.git_diff_requested = true;
         }
     }

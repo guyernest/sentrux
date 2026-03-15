@@ -97,7 +97,7 @@ fn maybe_spawn_git_diff_thread(app: &mut SentruxApp) {
     }
     app.state.git_diff_running = true;
     let msg_tx = app.scan_msg_tx.clone();
-    let window = app.state.git_diff_window;
+    let window = app.state.git_diff_window.clone();
     match std::thread::Builder::new()
         .name("git-diff".into())
         .spawn(move || {

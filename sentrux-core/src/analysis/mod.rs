@@ -10,6 +10,7 @@ pub(crate) mod test_helpers;
 pub mod entry_points;
 pub mod git;
 pub mod git_diff_adapter;
+pub mod gsd_phase_adapter;
 pub mod graph;
 pub mod lang_registry;
 pub mod parser;

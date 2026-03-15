@@ -456,6 +456,65 @@ pub struct AnalysisSnapshot {
     pub files: Vec<FileAnalysisSnapshot>,
 }
 
+// ── GSD phase overlay types ──────────────────────────────────────────────
+
+/// Status of a GSD planning phase.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhaseStatus {
+    /// Phase fully completed (ROADMAP.md checkbox is [x])
+    Completed,
+    /// First incomplete phase — currently in progress
+    InProgress,
+    /// Subsequent incomplete phases — not yet started
+    Planned,
+}
+
+/// Metadata for a single GSD planning phase.
+#[derive(Debug, Clone)]
+pub struct PhaseInfo {
+    /// Phase number string (e.g. "01", "02.1")
+    pub number: String,
+    /// Phase name (e.g. "Cleanup")
+    pub name: String,
+    /// Phase goal description
+    pub goal: String,
+    /// Completion status
+    pub status: PhaseStatus,
+    /// Completion date if available (from ROADMAP.md)
+    pub completed_date: Option<String>,
+    /// Files touched in this phase (scan-root-relative paths)
+    pub files: Vec<String>,
+    /// Commit range (from_sha, to_sha) detected from commit messages
+    pub commit_range: Option<(String, String)>,
+}
+
+/// Aggregated GSD phase overlay report.
+///
+/// Built by parsing `.planning/ROADMAP.md`, `*-PLAN.md`, and `*-SUMMARY.md`
+/// files at scan time. Used to color treemap files by which phase touched them.
+#[derive(Debug, Clone)]
+pub struct GsdPhaseReport {
+    /// All phases in order
+    pub phases: Vec<PhaseInfo>,
+    /// Map from scan-root-relative file path → index into `phases`
+    /// (most recent phase wins when a file appears in multiple phases)
+    pub by_file: HashMap<String, usize>,
+}
+
+impl GsdPhaseReport {
+    /// Total number of phases in this report.
+    pub fn phase_count(&self) -> usize {
+        self.phases.len()
+    }
+
+    /// Look up which phase is associated with the given file path.
+    ///
+    /// Returns `None` if the file is not associated with any phase.
+    pub fn phase_for_file(&self, path: &str) -> Option<&PhaseInfo> {
+        self.by_file.get(path).map(|&idx| &self.phases[idx])
+    }
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]

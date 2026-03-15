@@ -10,7 +10,7 @@ use crate::layout::types::FocusMode;
 use crate::core::snapshot::{ScanProgress, Snapshot};
 use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
-use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport};
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GsdPhaseReport};
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -80,6 +80,10 @@ pub enum ScanMsg {
     GitDiffReady(crate::core::pmat_types::GitDiffReport),
     /// On-demand git diff analysis failed — error message for logging
     GitDiffError(String),
+    /// GSD phase overlay analysis completed — carries the report to store on AppState
+    GsdPhaseReady(GsdPhaseReport),
+    /// GSD phase overlay analysis failed — error message for logging
+    GsdPhaseError(String),
 }
 
 /// Messages from main thread → layout thread.

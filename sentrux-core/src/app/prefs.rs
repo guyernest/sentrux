@@ -133,7 +133,7 @@ impl UserPrefs {
             show_all_edges: state.show_all_edges,
             activity_panel_open: state.activity_panel_open,
             last_root_path: state.root_path.clone(),
-            git_diff_window: state.git_diff_window,
+            git_diff_window: state.git_diff_window.clone(),
             git_diff_custom_n: state.git_diff_custom_n,
         }
     }
@@ -152,7 +152,7 @@ impl UserPrefs {
         if self.last_root_path.is_some() {
             state.root_path = self.last_root_path.clone();
         }
-        state.git_diff_window = self.git_diff_window;
+        state.git_diff_window = self.git_diff_window.clone();
         state.git_diff_custom_n = self.git_diff_custom_n;
     }
 }
