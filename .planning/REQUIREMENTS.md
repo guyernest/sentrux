@@ -103,12 +103,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLEN-01 | Phase 1 | Pending |
 | CLEN-02 | Phase 1 | Pending |
 | CLEN-03 | Phase 1 | Pending |
-| CLEN-04 | Phase 1 | Pending |
+| CLEN-04 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
 - Mapped to phases: 24
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-14*

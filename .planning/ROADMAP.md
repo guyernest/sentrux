@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 1: Cleanup
 **Goal**: The codebase contains only the capabilities it will carry forward — no MCP server, no plugin system, no languages beyond Rust/TypeScript/JavaScript
 **Depends on**: Nothing (first phase)
-**Requirements**: CLEN-01, CLEN-02, CLEN-03, CLEN-04
+**Requirements**: CLEN-01, CLEN-02, CLEN-03
 **Success Criteria** (what must be TRUE):
   1. Running sentrux no longer starts or exposes an MCP server endpoint
   2. No plugin loading code executes at startup; grammar plugin files are absent from the build
@@ -37,7 +37,7 @@ Plans:
 ### Phase 2: PMAT Integration
 **Goal**: Every file node in the treemap displays a PMAT TDG grade, and the health/mutation panels show PMAT data — sentrux's own analysis engine is gone
 **Depends on**: Phase 1
-**Requirements**: PMAT-01, PMAT-02, PMAT-03, PMAT-04, PMAT-05, PMAT-06, PMAT-07
+**Requirements**: PMAT-01, PMAT-02, PMAT-03, PMAT-04, PMAT-05, PMAT-06, PMAT-07, CLEN-04
 **Success Criteria** (what must be TRUE):
   1. Opening a Rust project shows TDG grade badges (A+ through F) on file nodes in the treemap within one scan cycle
   2. Treemap node color reflects TDG grade (green for A+/A, red for D/F) with no grades from the old sentrux grading system visible anywhere
