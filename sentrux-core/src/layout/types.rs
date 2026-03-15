@@ -19,9 +19,16 @@ pub enum ColorMode {
     Git,
     /// Color by PMAT TDG grade (A+ = green, F = red)
     TdgGrade,
+    /// Color by test coverage percentage (green = well-covered, red = uncovered).
+    /// Disabled in toolbar until coverage data is available.
+    Coverage,
+    /// Color by combined risk signal (PageRank × coverage × clippy warnings).
+    /// Hot = architecturally risky and poorly covered; cool = safe and tested.
+    Risk,
     /// Terminal pixel monochrome: flat neutral surface color, no per-file coloring.
     /// Style guide §10: "File blocks: one neutral surface color."
-    /// Also used as the serde fallback for removed variants (Age, Churn, Risk, ExecDepth, BlastRadius).
+    /// Also used as the serde fallback for removed variants (Age, Churn, ExecDepth, BlastRadius).
+    /// MUST remain the last variant — #[serde(other)] consumes all unrecognized values.
     #[serde(other)]
     Monochrome,
 }
@@ -33,23 +40,10 @@ impl ColorMode {
         ColorMode::Heat,
         ColorMode::Git,
         ColorMode::TdgGrade,
+        ColorMode::Coverage,
+        ColorMode::Risk,
         ColorMode::Monochrome,
     ];
-
-    /// Color modes available in the free tier.
-    pub const FREE: &'static [ColorMode] = &[
-        ColorMode::Language,
-        ColorMode::Heat,
-        ColorMode::Git,
-        ColorMode::TdgGrade,
-        ColorMode::Monochrome,
-    ];
-
-    /// Whether this mode requires Pro tier.
-    /// All remaining variants survived the prune because they are essential — none are Pro-gated.
-    pub fn is_pro(self) -> bool {
-        false
-    }
 
     /// Human-readable display label for this color mode.
     pub fn label(self) -> &'static str {
@@ -58,6 +52,8 @@ impl ColorMode {
             ColorMode::Heat => "Heat",
             ColorMode::Git => "Git Status",
             ColorMode::TdgGrade => "TDG Grade",
+            ColorMode::Coverage => "Coverage",
+            ColorMode::Risk => "Risk",
             ColorMode::Monochrome => "Mono",
         }
     }
@@ -130,8 +126,8 @@ mod color_mode_tests {
     use super::*;
 
     #[test]
-    fn color_mode_all_has_exactly_5_variants() {
-        assert_eq!(ColorMode::ALL.len(), 5);
+    fn color_mode_all_has_exactly_7_variants() {
+        assert_eq!(ColorMode::ALL.len(), 7);
     }
 
     #[test]
@@ -145,20 +141,9 @@ mod color_mode_tests {
     }
 
     #[test]
-    fn color_mode_tdg_grade_is_not_pro() {
-        assert!(!ColorMode::TdgGrade.is_pro());
-    }
-
-    #[test]
     fn color_mode_deserialize_churn_gives_monochrome() {
         let val: ColorMode = serde_json::from_str("\"churn\"").expect("should deserialize");
         assert_eq!(val, ColorMode::Monochrome, "old 'churn' variant should fallback to Monochrome");
-    }
-
-    #[test]
-    fn color_mode_deserialize_risk_gives_monochrome() {
-        let val: ColorMode = serde_json::from_str("\"risk\"").expect("should deserialize");
-        assert_eq!(val, ColorMode::Monochrome, "old 'risk' variant should fallback to Monochrome");
     }
 
     #[test]
@@ -168,14 +153,58 @@ mod color_mode_tests {
     }
 
     #[test]
-    fn color_mode_no_old_variants_in_all() {
-        // Age, Churn, Risk, ExecDepth, BlastRadius should not be present
-        for &mode in ColorMode::ALL {
-            assert!(
-                matches!(mode, ColorMode::Language | ColorMode::Heat | ColorMode::Git | ColorMode::TdgGrade | ColorMode::Monochrome),
-                "unexpected variant in ALL: {:?}", mode
-            );
-        }
+    fn color_mode_has_coverage_and_risk() {
+        assert!(ColorMode::ALL.contains(&ColorMode::Coverage),
+            "ColorMode::ALL should contain Coverage");
+        assert!(ColorMode::ALL.contains(&ColorMode::Risk),
+            "ColorMode::ALL should contain Risk");
+    }
+
+    #[test]
+    fn color_mode_coverage_label() {
+        assert_eq!(ColorMode::Coverage.label(), "Coverage");
+    }
+
+    #[test]
+    fn color_mode_risk_label() {
+        assert_eq!(ColorMode::Risk.label(), "Risk");
+    }
+
+    #[test]
+    fn color_mode_coverage_serde() {
+        // Round-trip Coverage
+        let serialized = serde_json::to_string(&ColorMode::Coverage).expect("serialize");
+        assert_eq!(serialized, "\"coverage\"");
+        let deserialized: ColorMode = serde_json::from_str(&serialized).expect("deserialize");
+        assert_eq!(deserialized, ColorMode::Coverage);
+        // Round-trip Risk
+        let serialized = serde_json::to_string(&ColorMode::Risk).expect("serialize");
+        assert_eq!(serialized, "\"risk\"");
+        let deserialized: ColorMode = serde_json::from_str(&serialized).expect("deserialize");
+        assert_eq!(deserialized, ColorMode::Risk);
+    }
+
+    #[test]
+    fn color_mode_serde_other_fallback() {
+        // Unknown strings should still fall back to Monochrome
+        let val: ColorMode = serde_json::from_str("\"unknown_future_mode\"").expect("should deserialize");
+        assert_eq!(val, ColorMode::Monochrome);
+        let val2: ColorMode = serde_json::from_str("\"churn\"").expect("should deserialize");
+        assert_eq!(val2, ColorMode::Monochrome);
+    }
+
+    #[test]
+    fn color_mode_coverage_before_monochrome() {
+        // Coverage and Risk must appear before Monochrome in ALL
+        let all = ColorMode::ALL;
+        let mono_pos = all.iter().position(|&m| m == ColorMode::Monochrome)
+            .expect("Monochrome must be in ALL");
+        let cov_pos = all.iter().position(|&m| m == ColorMode::Coverage)
+            .expect("Coverage must be in ALL");
+        let risk_pos = all.iter().position(|&m| m == ColorMode::Risk)
+            .expect("Risk must be in ALL");
+        assert!(cov_pos < mono_pos, "Coverage must appear before Monochrome in ALL");
+        assert!(risk_pos < mono_pos, "Risk must appear before Monochrome in ALL");
     }
 }
 

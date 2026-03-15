@@ -6,19 +6,10 @@
 
 use egui::Color32;
 
-/// Blast radius → red gradient. High blast = bright red (dangerous to change),
-/// low blast = dim green (safe to change).
-pub fn blast_radius_color(radius: u32, max_radius: u32) -> Color32 {
-    if max_radius == 0 {
-        return Color32::from_rgb(60, 140, 80); // all safe
-    }
-    let t = (radius as f32 / max_radius as f32).min(1.0);
-    // green(safe) → yellow → red(dangerous)
-    let r = (60.0 + t * 195.0) as u8;
-    let g = (160.0 - t * 120.0) as u8;
-    let b = (80.0 - t * 50.0) as u8;
-    Color32::from_rgb(r, g, b)
-}
+/// Shared status colors — used for pass/warn/fail indicators across panels.
+pub const STATUS_PASS: Color32 = Color32::from_rgb(72, 191, 145);
+pub const STATUS_WARN: Color32 = Color32::from_rgb(255, 193, 7);
+pub const STATUS_FAIL: Color32 = Color32::from_rgb(244, 67, 54);
 
 /// Language → color mapping via O(1) match.
 pub fn language_color(lang: &str) -> Color32 {
@@ -70,16 +61,6 @@ pub fn git_color(gs: &str) -> Color32 {
     }
 }
 
-/// Exec depth → blue gradient. Depth 0 (entry points) = bright/prominent,
-/// deeper dependencies = dimmer. Inverted t so shallow = visually important.
-pub fn exec_depth_color(depth: u32) -> Color32 {
-    let t = 1.0 - (depth as f32 / 8.0).min(1.0); // invert: 0=bright, 8+=dim
-    let r = (40.0 + t * 60.0) as u8;
-    let g = (60.0 + t * 100.0) as u8;
-    let b = (180.0 + t * 75.0) as u8;
-    Color32::from_rgb(r, g, b)
-}
-
 /// TDG grade → green-to-red gradient.
 /// A+ (t=1.0) = greenish, F (t=0.0) = reddish.
 pub fn tdg_grade_color(grade: &str) -> Color32 {
@@ -87,6 +68,49 @@ pub fn tdg_grade_color(grade: &str) -> Color32 {
     // green(A+) -> yellow(C) -> red(F)
     let r = (30.0 + (1.0 - t) * 225.0) as u8;
     let g = (180.0 * t) as u8;
+    let b = 40_u8;
+    Color32::from_rgb(r, g, b)
+}
+
+/// Map a line coverage percentage (0.0–100.0) to a Color32 gradient.
+///
+/// - ≥ 80%: green
+/// - 40–80%: yellow blend
+/// - < 40%: red
+///
+/// Uses the same RGB interpolation pattern as `tdg_grade_color`:
+/// `t = pct / 100`, r = 30 + (1-t)*225, g = 180*t, b = 40.
+pub fn coverage_color(line_pct: f64) -> Color32 {
+    let t = (line_pct / 100.0).clamp(0.0, 1.0) as f32;
+    let r = (30.0 + (1.0 - t) * 225.0) as u8;
+    let g = (180.0 * t) as u8;
+    let b = 40_u8;
+    Color32::from_rgb(r, g, b)
+}
+
+/// Combine PageRank, coverage, and clippy warning count into a risk color.
+///
+/// Risk formula: `raw = pagerank * (1 - coverage_pct/100) * (1 + ln(clippy_count+1)/5)`
+///
+/// Normalized using `max_raw` (project-level maximum raw risk). If `max_raw <= 0.0`,
+/// defaults to `1.0` to avoid division by zero.
+///
+/// Color gradient: cool/green (low risk) → hot/red (high risk).
+pub fn risk_color(
+    pagerank: Option<f64>,
+    coverage_pct: Option<f64>,
+    clippy_count: Option<u32>,
+    max_raw: f64,
+) -> Color32 {
+    let pr = pagerank.unwrap_or(0.0).clamp(0.0, 1.0);
+    let uncovered = 1.0 - coverage_pct.unwrap_or(50.0).clamp(0.0, 100.0) / 100.0;
+    let lint_factor = 1.0 + (clippy_count.unwrap_or(0) as f64 + 1.0).ln() / 5.0;
+    let raw = pr * uncovered * lint_factor;
+    let norm = if max_raw <= 0.0 { 1.0 } else { max_raw };
+    let t = (raw / norm).clamp(0.0, 1.0) as f32;
+    // cool (low risk = green) → hot (high risk = red)
+    let r = (30.0 + t * 225.0) as u8;
+    let g = (180.0 * (1.0 - t)) as u8;
     let b = 40_u8;
     Color32::from_rgb(r, g, b)
 }
@@ -107,6 +131,57 @@ mod tdg_grade_color_tests {
         let c = tdg_grade_color("F");
         let [r, g, _b, _] = c.to_array();
         assert!(r > g, "F should be reddish: r={} g={}", r, g);
+    }
+
+    // ── coverage_color tests ─────────────────────────────────────────────
+
+    #[test]
+    fn coverage_color_high_is_greenish() {
+        let c = coverage_color(85.0);
+        let [r, g, _b, _] = c.to_array();
+        assert!(g > r, "85% coverage should be greenish: r={} g={}", r, g);
+    }
+
+    #[test]
+    fn coverage_color_low_is_reddish() {
+        let c = coverage_color(20.0);
+        let [r, g, _b, _] = c.to_array();
+        assert!(r > g, "20% coverage should be reddish: r={} g={}", r, g);
+    }
+
+    #[test]
+    fn coverage_color_mid_is_yellowish() {
+        let c = coverage_color(50.0);
+        let [r, g, _b, _] = c.to_array();
+        // At 50%, both r and g should be non-zero (yellowish)
+        assert!(r > 30, "50% coverage r should be notable: r={}", r);
+        assert!(g > 30, "50% coverage g should be notable: g={}", g);
+    }
+
+    // ── risk_color tests ─────────────────────────────────────────────────
+
+    #[test]
+    fn risk_color_high_risk_is_red() {
+        // High pagerank + low coverage + many lints = high risk = reddish
+        let c = risk_color(Some(0.9), Some(10.0), Some(50), 1.0);
+        let [r, g, _b, _] = c.to_array();
+        assert!(r > g, "high risk should be reddish: r={} g={}", r, g);
+    }
+
+    #[test]
+    fn risk_color_low_risk_is_green() {
+        // Low pagerank + high coverage + no lints = low risk = greenish
+        let c = risk_color(Some(0.01), Some(95.0), Some(0), 1.0);
+        let [r, g, _b, _] = c.to_array();
+        assert!(g > r, "low risk should be greenish: r={} g={}", r, g);
+    }
+
+    #[test]
+    fn risk_color_none_inputs_no_panic() {
+        // All None should not panic and return a valid color
+        let c = risk_color(None, None, None, 1.0);
+        let [_r, _g, _b, _a] = c.to_array();
+        // Just checking it runs without panic
     }
 }
 

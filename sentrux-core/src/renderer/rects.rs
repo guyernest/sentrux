@@ -340,6 +340,9 @@ pub fn file_color(ctx: &RenderContext, path: &str) -> Color32 {
         ColorMode::Heat => color_by_heat(ctx, path),
         ColorMode::Git => color_by_git(ctx, path),
         ColorMode::TdgGrade => color_by_tdg_grade(ctx, path),
+        // Coverage and Risk ColorModes are wired in a later plan (02.1-02+).
+        // Fall back to monochrome until the per-file data is available.
+        ColorMode::Coverage | ColorMode::Risk => ctx.theme_config.file_surface,
     }
 }
 
