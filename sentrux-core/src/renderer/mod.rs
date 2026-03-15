@@ -82,6 +82,9 @@ pub struct RenderContext<'a> {
     /// Community highlight set — file paths in the selected node's BFS community.
     /// Used in Risk mode to spotlight connected files on the treemap.
     pub community_highlight: Option<&'a HashSet<String>>,
+    /// Pre-computed maximum raw risk value across all files.
+    /// Used by `color_by_risk` to normalize the risk gradient so the riskiest file is always red.
+    pub max_risk_raw: f64,
 }
 
 /// Orchestrate a single frame of rendering onto the canvas painter.

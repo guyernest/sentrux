@@ -244,7 +244,7 @@ impl SentruxApp {
     /// Paint the treemap render frame and optional progress overlay.
     fn paint_render_frame(&mut self, ui: &mut egui::Ui, canvas_rect: egui::Rect) {
         let painter = ui.painter_at(canvas_rect);
-        let render_ctx = renderer::RenderContext {
+        let mut render_ctx = renderer::RenderContext {
             render_data: self.state.render_data.as_ref(),
             viewport: &self.state.viewport,
             theme_config: &self.state.theme_config,
@@ -267,7 +267,10 @@ impl SentruxApp {
             anim_time: self.state.anim_time,
             interacting: self.state.interacting,
             root_path: self.state.root_path.as_deref(),
+            max_risk_raw: 0.0, // placeholder — computed below
         };
+        // Compute max_risk_raw once per frame (not per file)
+        render_ctx.max_risk_raw = renderer::rects::compute_max_risk_raw(&render_ctx);
         renderer::render_frame(&painter, canvas_rect, &render_ctx);
 
         if self.state.scanning {

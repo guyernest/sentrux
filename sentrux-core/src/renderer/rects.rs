@@ -376,26 +376,59 @@ fn color_by_coverage(ctx: &RenderContext, path: &str) -> Color32 {
 
 /// Risk color mode: combines PageRank + coverage + clippy warnings into a risk score.
 /// Falls back gracefully when individual data sources are missing.
+/// Normalizes against the project-level maximum raw risk so the riskiest file is always red.
 fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
+    let max_raw = ctx.max_risk_raw;
+
     // Extract basename for graph-metrics lookup (nodes indexed by filename, not full path)
     let basename = path.rsplit('/').next().unwrap_or(path);
 
-    // Look up PageRank from graph-metrics report
     let pagerank = ctx.graph_metrics_report
         .and_then(|gm| gm.by_filename.get(basename).map(|&idx| gm.data.nodes[idx].pagerank))
         .unwrap_or(0.0);
 
-    // Look up line coverage percentage from coverage report
     let coverage_pct = ctx.coverage_report
         .and_then(|cov| cov.by_path.get(path).map(|&idx| cov.files[idx].summary.lines.percent));
 
-    // Look up clippy warning count from clippy report
     let clippy_count = ctx.clippy_report
         .and_then(|r| r.by_file.get(path))
         .map(|d| d.total);
 
-    // max_raw = 1.0 for now; Plan 03 can refine with project-level max normalization
-    colors::risk_color(Some(pagerank), coverage_pct, clippy_count, 1.0)
+    colors::risk_color(Some(pagerank), coverage_pct, clippy_count, max_raw)
+}
+
+/// Compute the maximum raw risk value across all files in graph-metrics.
+/// Used to normalize risk coloring so the riskiest file is always maximally red.
+/// Called once per frame when building RenderContext.
+pub fn compute_max_risk_raw(ctx: &RenderContext) -> f64 {
+    let gm = match ctx.graph_metrics_report {
+        Some(gm) => gm,
+        None => return 1.0,
+    };
+    let mut max = 0.0_f64;
+    for node in &gm.data.nodes {
+        let pr = node.pagerank.clamp(0.0, 1.0);
+        let uncovered = 1.0 - ctx.coverage_report
+            .and_then(|cov| {
+                // Graph-metrics uses bare filenames; try matching against coverage by_path basenames
+                cov.by_path.iter()
+                    .find(|(k, _)| k.rsplit('/').next() == Some(&node.name))
+                    .map(|(_, &idx)| cov.files[idx].summary.lines.percent)
+            })
+            .unwrap_or(50.0)
+            .clamp(0.0, 100.0) / 100.0;
+        let clippy_count = ctx.clippy_report
+            .and_then(|r| {
+                r.by_file.iter()
+                    .find(|(k, _)| k.rsplit('/').next() == Some(&node.name))
+                    .map(|(_, d)| d.total)
+            })
+            .unwrap_or(0);
+        let lint_factor = 1.0 + (clippy_count as f64 + 1.0).ln() / 5.0;
+        let raw = pr * uncovered * lint_factor;
+        if raw > max { max = raw; }
+    }
+    if max <= 0.0 { 1.0 } else { max }
 }
 
 fn color_by_language(ctx: &RenderContext, path: &str) -> Color32 {
