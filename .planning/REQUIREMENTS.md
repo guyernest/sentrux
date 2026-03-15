@@ -41,19 +41,19 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### PMAT Code Rank
 
-- [ ] **RANK-01**: PMAT code rank data (PageRank, centrality) is computed via `pmat analyze graph-metrics` subprocess
+- [x] **RANK-01**: PMAT code rank data (PageRank, centrality) is computed via `pmat analyze graph-metrics` subprocess
 - [ ] **RANK-02**: File detail panel shows PageRank score, centrality measures, and community assignment for selected file
-- [ ] **RANK-03**: A new ColorMode variant colors treemap nodes by architectural importance (PageRank rank)
+- [x] **RANK-03**: A new ColorMode variant colors treemap nodes by architectural importance (PageRank rank)
 
 ### Test Coverage
 
-- [ ] **COV-01**: Test coverage data is collected via `cargo llvm-cov` subprocess and parsed into per-file percentages
+- [x] **COV-01**: Test coverage data is collected via `cargo llvm-cov` subprocess and parsed into per-file percentages
 - [ ] **COV-02**: File detail panel shows line coverage percentage for selected file
-- [ ] **COV-03**: A new ColorMode variant colors treemap nodes by test coverage (green = well-covered, red = uncovered)
+- [x] **COV-03**: A new ColorMode variant colors treemap nodes by test coverage (green = well-covered, red = uncovered)
 
 ### Clippy Analysis
 
-- [ ] **CLIP-01**: Clippy warnings (pedantic + selected nursery lints) are collected via `cargo clippy` subprocess and counted per-file
+- [x] **CLIP-01**: Clippy warnings (pedantic + selected nursery lints) are collected via `cargo clippy` subprocess and counted per-file
 - [ ] **CLIP-02**: File detail panel shows clippy warning count and categories for selected file
 
 ### Cleanup
@@ -121,13 +121,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLEN-02 | Phase 1 | Complete |
 | CLEN-03 | Phase 1 | Complete |
 | CLEN-04 | Phase 2 | Complete |
-| RANK-01 | Phase 2.1 | Pending |
+| RANK-01 | Phase 2.1 | Complete |
 | RANK-02 | Phase 2.1 | Pending |
-| RANK-03 | Phase 2.1 | Pending |
-| COV-01 | Phase 2.1 | Pending |
+| RANK-03 | Phase 2.1 | Complete |
+| COV-01 | Phase 2.1 | Complete |
 | COV-02 | Phase 2.1 | Pending |
-| COV-03 | Phase 2.1 | Pending |
-| CLIP-01 | Phase 2.1 | Pending |
+| COV-03 | Phase 2.1 | Complete |
+| CLIP-01 | Phase 2.1 | Complete |
 | CLIP-02 | Phase 2.1 | Pending |
 
 **Coverage:**

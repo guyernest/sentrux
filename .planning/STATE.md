@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 2.1 context gathered
-last_updated: "2026-03-15T04:28:17.897Z"
+stopped_at: Completed 02.1-01-PLAN.md
+last_updated: "2026-03-15T04:54:36.060Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 9
+  completed_plans: 7
   percent: 50
 ---
 
@@ -56,6 +56,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02-pmat-integration P02 | 5 | 2 tasks | 10 files |
 | Phase 02-pmat-integration P03 | 12 | 2 tasks | 8 files |
 | Phase 02-pmat-integration P04 | 18 | 2 tasks | 35 files |
+| Phase 02.1-rust-deep-analysis P01 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 02-pmat-integration]: draw_pmat_panel wired into metrics_panel.rs (consistent with all other panels), not draw_panels.rs
 - [Phase 02-pmat-integration]: sentrux check delegates to pmat quality-gate subprocess; sentrux gate delegates to pmat tdg --min-grade C
 - [Phase 02-pmat-integration]: 91 tests deleted with deleted modules (grading/arch/dsm/rules/stability) — pre-existing 27 oracle failures unchanged
+- [Phase 02.1-rust-deep-analysis]: risk_color() takes max_raw parameter for project-level normalization (not fixed constant)
+- [Phase 02.1-rust-deep-analysis]: ColorMode::Coverage and Risk fall back to monochrome in file_color() until 02.1-02 wires real data
+- [Phase 02.1-rust-deep-analysis]: New ColorMode variants must be inserted BEFORE serde(other) Monochrome in enum definition
 
 ### Pending Todos
 
@@ -99,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T04:28:17.895Z
-Stopped at: Phase 2.1 context gathered
-Resume file: .planning/phases/02.1-rust-deep-analysis/02.1-CONTEXT.md
+Last session: 2026-03-15T04:54:36.051Z
+Stopped at: Completed 02.1-01-PLAN.md
+Resume file: None
