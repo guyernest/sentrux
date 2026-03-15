@@ -50,6 +50,12 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
         app.state.git_diff_requested = false;
         maybe_spawn_git_diff_thread(app);
     }
+
+    // Handle gsd_phase_requested flag — spawn background thread with channel access
+    if app.state.gsd_phase_requested {
+        app.state.gsd_phase_requested = false;
+        maybe_spawn_gsd_phase_thread(app);
+    }
 }
 
 /// Spawn a background coverage thread if conditions are met.
@@ -111,6 +117,38 @@ fn maybe_spawn_git_diff_thread(app: &mut SentruxApp) {
         Err(e) => {
             eprintln!("[app] failed to spawn git-diff thread: {}", e);
             app.state.git_diff_running = false;
+        }
+    }
+}
+
+/// Spawn a background GSD phase thread if conditions are met.
+/// Sets gsd_phase_running=true and sends GsdPhaseReady/GsdPhaseError via scan_msg_tx.
+fn maybe_spawn_gsd_phase_thread(app: &mut SentruxApp) {
+    let root = match app.state.root_path.clone() {
+        Some(r) => r,
+        None => return,
+    };
+    if app.state.gsd_phase_running || app.state.scanning {
+        return;
+    }
+    app.state.gsd_phase_running = true;
+    let msg_tx = app.scan_msg_tx.clone();
+    match std::thread::Builder::new()
+        .name("gsd-phase".into())
+        .spawn(move || {
+            let msg = match crate::analysis::gsd_phase_adapter::parse_gsd_phases(&root) {
+                Some(report) => crate::app::channels::ScanMsg::GsdPhaseReady(report),
+                None => crate::app::channels::ScanMsg::GsdPhaseError(
+                    "Failed to parse .planning/ directory".into()
+                ),
+            };
+            let _ = msg_tx.send(msg);
+        })
+    {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("[app] failed to spawn gsd-phase thread: {}", e);
+            app.state.gsd_phase_running = false;
         }
     }
 }

@@ -172,6 +172,13 @@ pub struct AppState {
     pub git_diff_running: bool,
     /// GSD phase overlay report — None until parsed from .planning/ directory
     pub gsd_phase_report: Option<GsdPhaseReport>,
+    /// True while on-demand GSD phase background thread is running
+    pub gsd_phase_running: bool,
+    /// Flag set by toolbar/auto-trigger when GSD phase parse is requested.
+    /// The app handles spawning the background thread in draw_panels.rs.
+    pub gsd_phase_requested: bool,
+    /// Selected phase index for navigator highlight (Plan 03) — persists across scans
+    pub selected_phase_idx: Option<usize>,
     /// Active diff window selection for git diff overlay
     pub git_diff_window: DiffWindow,
     /// Flag set by toolbar when "Run Git Diff" is requested.
@@ -301,6 +308,9 @@ impl AppState {
             git_diff_report: None,
             git_diff_running: false,
             gsd_phase_report: None,
+            gsd_phase_running: false,
+            gsd_phase_requested: false,
+            selected_phase_idx: None,
             git_diff_window: DiffWindow::default(),
             git_diff_requested: false,
             git_diff_custom_n: 10,
