@@ -25,6 +25,10 @@ pub enum ColorMode {
     /// Color by combined risk signal (PageRank × coverage × clippy warnings).
     /// Hot = architecturally risky and poorly covered; cool = safe and tested.
     Risk,
+    /// Color by git diff intensity within a selectable time window.
+    /// Blue (recently unchanged) → orange (heavily changed); new files get teal.
+    #[serde(rename = "GitDiff")]
+    GitDiff,
     /// Terminal pixel monochrome: flat neutral surface color, no per-file coloring.
     /// Style guide §10: "File blocks: one neutral surface color."
     /// Also used as the serde fallback for removed variants (Age, Churn, ExecDepth, BlastRadius).
@@ -42,6 +46,7 @@ impl ColorMode {
         ColorMode::TdgGrade,
         ColorMode::Coverage,
         ColorMode::Risk,
+        ColorMode::GitDiff,
         ColorMode::Monochrome,
     ];
 
@@ -54,6 +59,7 @@ impl ColorMode {
             ColorMode::TdgGrade => "TDG Grade",
             ColorMode::Coverage => "Coverage",
             ColorMode::Risk => "Risk",
+            ColorMode::GitDiff => "Git Diff",
             ColorMode::Monochrome => "Mono",
         }
     }
@@ -126,8 +132,8 @@ mod color_mode_tests {
     use super::*;
 
     #[test]
-    fn color_mode_all_has_exactly_7_variants() {
-        assert_eq!(ColorMode::ALL.len(), 7);
+    fn color_mode_all_has_exactly_8_variants() {
+        assert_eq!(ColorMode::ALL.len(), 8);
     }
 
     #[test]
@@ -205,6 +211,46 @@ mod color_mode_tests {
             .expect("Risk must be in ALL");
         assert!(cov_pos < mono_pos, "Coverage must appear before Monochrome in ALL");
         assert!(risk_pos < mono_pos, "Risk must appear before Monochrome in ALL");
+    }
+
+    // ── GitDiff ColorMode tests ─────────────────────────────────────────
+
+    #[test]
+    fn color_mode_git_diff_exists_in_all() {
+        assert!(ColorMode::ALL.contains(&ColorMode::GitDiff),
+            "ColorMode::ALL should contain GitDiff");
+    }
+
+    #[test]
+    fn color_mode_git_diff_before_monochrome() {
+        let all = ColorMode::ALL;
+        let mono_pos = all.iter().position(|&m| m == ColorMode::Monochrome)
+            .expect("Monochrome must be in ALL");
+        let gitdiff_pos = all.iter().position(|&m| m == ColorMode::GitDiff)
+            .expect("GitDiff must be in ALL");
+        assert!(gitdiff_pos < mono_pos, "GitDiff must appear before Monochrome in ALL");
+    }
+
+    #[test]
+    fn color_mode_git_diff_serializes_to_gitdiff() {
+        let serialized = serde_json::to_string(&ColorMode::GitDiff).expect("serialize");
+        assert_eq!(serialized, "\"GitDiff\"", "GitDiff should serialize to 'GitDiff'");
+    }
+
+    #[test]
+    fn color_mode_git_diff_deserializes() {
+        let val: ColorMode = serde_json::from_str("\"GitDiff\"").expect("should deserialize");
+        assert_eq!(val, ColorMode::GitDiff);
+    }
+
+    #[test]
+    fn color_mode_git_diff_label() {
+        assert_eq!(ColorMode::GitDiff.label(), "Git Diff");
+    }
+
+    #[test]
+    fn color_mode_all_has_8_variants_with_git_diff() {
+        assert_eq!(ColorMode::ALL.len(), 8, "ALL should have 8 variants after adding GitDiff");
     }
 }
 

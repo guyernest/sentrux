@@ -88,6 +88,29 @@ pub fn coverage_color(line_pct: f64) -> Color32 {
     Color32::from_rgb(r, g, b)
 }
 
+/// Map a normalized git diff intensity (0.0–1.0) to a Color32 gradient.
+///
+/// - t=0.0: cool blue (30, 107, 155) — unchanged / low activity
+/// - t=1.0: hot orange (232, 106, 17) — heavily changed
+///
+/// Uses linear RGB interpolation with clamping. Visually distinct from
+/// the green-to-red quality gradients (Coverage, Risk, TdgGrade).
+pub fn git_diff_intensity_color(t: f32) -> Color32 {
+    let t = t.clamp(0.0, 1.0);
+    let r = (30.0 + t * (232.0 - 30.0)) as u8;
+    let g = (107.0 + t * (106.0 - 107.0)) as u8;
+    let b = (155.0 + t * (17.0 - 155.0)) as u8;
+    Color32::from_rgb(r, g, b)
+}
+
+/// Distinct teal color for files newly created within the diff window.
+///
+/// Chosen to be visually separate from both the blue (low activity) and
+/// orange (high activity) endpoints of the intensity gradient.
+pub fn git_diff_new_file_color() -> Color32 {
+    Color32::from_rgb(32, 190, 165)
+}
+
 /// Compute raw risk value from individual signals.
 ///
 /// Formula: `pagerank * (1 - coverage_pct/100) * (1 + ln(clippy_count+1)/5)`
@@ -124,6 +147,57 @@ pub fn risk_color(
     let g = (180.0 * (1.0 - t)) as u8;
     let b = 40_u8;
     Color32::from_rgb(r, g, b)
+}
+
+#[cfg(test)]
+mod git_diff_color_tests {
+    use super::*;
+
+    #[test]
+    fn git_diff_intensity_color_zero_is_blue() {
+        let c = git_diff_intensity_color(0.0);
+        let [r, _g, b, _] = c.to_array();
+        assert!(r < 60, "t=0 should be blue-ish: r={} (expected < 60)", r);
+        assert!(b > 100, "t=0 should be blue-ish: b={} (expected > 100)", b);
+    }
+
+    #[test]
+    fn git_diff_intensity_color_one_is_orange() {
+        let c = git_diff_intensity_color(1.0);
+        let [r, _g, b, _] = c.to_array();
+        assert!(r > 200, "t=1 should be orange-ish: r={} (expected > 200)", r);
+        assert!(b < 30, "t=1 should be orange-ish: b={} (expected < 30)", b);
+    }
+
+    #[test]
+    fn git_diff_new_file_color_is_teal() {
+        let c = git_diff_new_file_color();
+        let [r, g, b, _] = c.to_array();
+        // Teal: green-dominant with significant blue, not orange
+        assert!(g > r, "teal: g({}) should > r({})", g, r);
+        assert!(b > r, "teal: b({}) should > r({})", b, r);
+    }
+
+    #[test]
+    fn git_diff_intensity_color_clamps_out_of_range() {
+        // Should not panic for values outside 0..1
+        let _ = git_diff_intensity_color(-1.0);
+        let _ = git_diff_intensity_color(2.0);
+    }
+
+    #[test]
+    fn git_diff_intensity_color_midpoint_is_between() {
+        let c0 = git_diff_intensity_color(0.0);
+        let c1 = git_diff_intensity_color(1.0);
+        let cm = git_diff_intensity_color(0.5);
+        let [r0, _, b0, _] = c0.to_array();
+        let [r1, _, b1, _] = c1.to_array();
+        let [rm, _, bm, _] = cm.to_array();
+        // Midpoint r should be between r0 and r1
+        assert!(rm > r0 && rm < r1, "midpoint r={} should be between {}..{}", rm, r0, r1);
+        // Midpoint b should be between b1 and b0 (b decreases from 0→1)
+        assert!(bm > b1 && bm < b0, "midpoint b={} should be between {}..{}", bm, b1, b0);
+    }
 }
 
 #[cfg(test)]

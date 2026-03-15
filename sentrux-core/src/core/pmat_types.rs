@@ -3,7 +3,7 @@
 //! Provides deserialization types for PMAT JSON output (TDG and repo-score),
 //! along with grade display and color-interpolation helpers.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 // ── PMAT TDG output types ────────────────────────────────────────────────
@@ -346,7 +346,192 @@ pub fn lint_category(lint_id: &str) -> &'static str {
     }
 }
 
+// ── Git diff overlay types ───────────────────────────────────────────────
+
+/// Per-file data from a windowed git diff walk.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileDiffData {
+    /// Number of commits that touched this file within the window
+    pub commit_count: u32,
+    /// Total lines added across all commits in the window
+    pub lines_added: u32,
+    /// Total lines removed across all commits in the window
+    pub lines_removed: u32,
+    /// True if this file was first created within the window
+    pub is_new_file: bool,
+}
+
+impl FileDiffData {
+    /// Combined change intensity: sqrt((lines_added + lines_removed) * commit_count).
+    ///
+    /// Uses geometric mean to combine line volume and commit frequency.
+    /// Returns 0.0 for unchanged files (zero lines or zero commits).
+    pub fn raw_intensity(&self) -> f64 {
+        let lines = (self.lines_added + self.lines_removed) as f64;
+        let commits = self.commit_count as f64;
+        (lines * commits).sqrt()
+    }
+}
+
+/// Aggregated git diff report for the current window, ready for color mapping.
+#[derive(Debug, Clone)]
+pub struct GitDiffReport {
+    /// Per-file diff data, keyed by scan-root-relative path
+    pub by_file: HashMap<String, FileDiffData>,
+    /// Maximum raw_intensity across all files — used to normalize to 0..1.
+    /// Defaults to 1.0 when no files changed (avoids division by zero).
+    pub max_intensity: f64,
+    /// The window this report was computed for
+    pub window: crate::metrics::evo::git_walker::DiffWindow,
+    /// Unix epoch when this report was computed
+    pub computed_at: i64,
+}
+
+impl GitDiffReport {
+    /// Build a `GitDiffReport` from windowed walk results.
+    ///
+    /// Aggregates per-commit records into per-file totals, marks new files,
+    /// and computes the max_intensity for normalization.
+    pub fn from_walk(
+        records: Vec<crate::metrics::evo::git_walker::CommitRecord>,
+        new_file_paths: HashSet<String>,
+        window: crate::metrics::evo::git_walker::DiffWindow,
+    ) -> Self {
+        let mut by_file: HashMap<String, FileDiffData> = HashMap::new();
+        for record in records {
+            for file in record.files {
+                let entry = by_file.entry(file.path).or_insert(FileDiffData {
+                    commit_count: 0,
+                    lines_added: 0,
+                    lines_removed: 0,
+                    is_new_file: false,
+                });
+                entry.commit_count += 1;
+                entry.lines_added += file.added;
+                entry.lines_removed += file.removed;
+            }
+        }
+        // Mark new files
+        for path in &new_file_paths {
+            if let Some(entry) = by_file.get_mut(path) {
+                entry.is_new_file = true;
+            }
+        }
+        // Compute max_intensity
+        let max_intensity = by_file
+            .values()
+            .map(|d| d.raw_intensity())
+            .fold(0.0_f64, f64::max);
+        let max_intensity = if max_intensity > 0.0 { max_intensity } else { 1.0 };
+        let computed_at = crate::metrics::evo::git_walker::epoch_now();
+        GitDiffReport { by_file, max_intensity, window, computed_at }
+    }
+}
+
+/// Snapshot of per-file analysis scores at a point in time (for metric deltas).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileAnalysisSnapshot {
+    /// File path (scan-root-relative)
+    pub path: String,
+    /// PMAT TDG grade (e.g. "A", "B+")
+    pub tdg_grade: Option<String>,
+    /// Line coverage percentage (0.0–100.0)
+    pub coverage_pct: Option<f64>,
+    /// Clippy warning count
+    pub clippy_count: Option<u32>,
+}
+
+/// Analysis snapshot for the entire project at a point in time.
+///
+/// Stored in `.sentrux/snapshot.json` and committed to git so historical
+/// states can be retrieved for metric delta computation in GitDiff mode.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalysisSnapshot {
+    /// Unix epoch when this snapshot was taken
+    pub computed_at: i64,
+    /// Git commit SHA this snapshot corresponds to (may be empty if not committed)
+    #[serde(default)]
+    pub commit_sha: String,
+    /// Per-file analysis scores
+    pub files: Vec<FileAnalysisSnapshot>,
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod git_diff_tests {
+    use super::*;
+
+    #[test]
+    fn file_diff_data_raw_intensity_changed_file() {
+        let d = FileDiffData {
+            commit_count: 4,
+            lines_added: 100,
+            lines_removed: 50,
+            is_new_file: false,
+        };
+        let intensity = d.raw_intensity();
+        assert!(intensity > 0.0, "raw_intensity should be > 0 for changed files, got {}", intensity);
+        // sqrt((100+50) * 4) = sqrt(600) ≈ 24.49
+        let expected = ((150.0_f64) * 4.0).sqrt();
+        assert!((intensity - expected).abs() < 0.01, "expected {}, got {}", expected, intensity);
+    }
+
+    #[test]
+    fn file_diff_data_raw_intensity_zero_lines() {
+        let d = FileDiffData {
+            commit_count: 0,
+            lines_added: 0,
+            lines_removed: 0,
+            is_new_file: false,
+        };
+        assert_eq!(d.raw_intensity(), 0.0, "zero lines/commits = zero intensity");
+    }
+
+    #[test]
+    fn git_diff_report_from_walk_max_intensity_positive() {
+        use crate::metrics::evo::git_walker::{CommitRecord, CommitFile, DiffWindow};
+        let records = vec![
+            CommitRecord {
+                author: "alice".to_string(),
+                epoch: 1000,
+                files: vec![
+                    CommitFile { path: "src/foo.rs".to_string(), added: 10, removed: 5 },
+                    CommitFile { path: "src/bar.rs".to_string(), added: 20, removed: 0 },
+                ],
+            },
+        ];
+        let new_files = std::collections::HashSet::new();
+        let report = GitDiffReport::from_walk(records, new_files, DiffWindow::TimeSecs(86400));
+        assert!(report.max_intensity > 0.0, "max_intensity should be > 0 when files changed");
+        assert!(report.by_file.contains_key("src/foo.rs"));
+        assert!(report.by_file.contains_key("src/bar.rs"));
+    }
+
+    #[test]
+    fn git_diff_report_from_walk_empty_defaults_max_intensity_one() {
+        use crate::metrics::evo::git_walker::DiffWindow;
+        let report = GitDiffReport::from_walk(vec![], std::collections::HashSet::new(), DiffWindow::default());
+        assert_eq!(report.max_intensity, 1.0, "empty walk should default max_intensity to 1.0");
+    }
+
+    #[test]
+    fn git_diff_report_marks_new_files() {
+        use crate::metrics::evo::git_walker::{CommitRecord, CommitFile, DiffWindow};
+        let mut new_files = std::collections::HashSet::new();
+        new_files.insert("src/new.rs".to_string());
+        let records = vec![
+            CommitRecord {
+                author: "bob".to_string(),
+                epoch: 2000,
+                files: vec![CommitFile { path: "src/new.rs".to_string(), added: 50, removed: 0 }],
+            },
+        ];
+        let report = GitDiffReport::from_walk(records, new_files, DiffWindow::CommitCount(1));
+        let entry = report.by_file.get("src/new.rs").expect("new file should be in report");
+        assert!(entry.is_new_file, "file in new_files set should have is_new_file=true");
+    }
+}
 
 #[cfg(test)]
 mod tests {

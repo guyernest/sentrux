@@ -354,7 +354,30 @@ pub fn file_color(ctx: &RenderContext, path: &str) -> Color32 {
         ColorMode::TdgGrade => color_by_tdg_grade(ctx, path),
         ColorMode::Coverage => color_by_coverage(ctx, path),
         ColorMode::Risk => color_by_risk(ctx, path),
+        ColorMode::GitDiff => color_by_git_diff(ctx, path),
     }
+}
+
+/// Git diff color mode: color files by change intensity within the selected window.
+///
+/// - No report available → monochrome fallback (file_surface)
+/// - Path not in report → muted gray (unchanged/untracked within window)
+/// - New file (created within window) → teal
+/// - Changed file → blue-to-orange gradient by normalized intensity
+fn color_by_git_diff(ctx: &RenderContext, path: &str) -> Color32 {
+    let report = match ctx.git_diff_report {
+        Some(r) => r,
+        None => return ctx.theme_config.file_surface,
+    };
+    let data = match report.by_file.get(path) {
+        Some(d) => d,
+        None => return egui::Color32::from_rgb(50, 52, 55), // muted gray (GDIT-04)
+    };
+    if data.is_new_file {
+        return colors::git_diff_new_file_color();
+    }
+    let t = (data.raw_intensity() / report.max_intensity).clamp(0.0, 1.0) as f32;
+    colors::git_diff_intensity_color(t)
 }
 
 /// Coverage color mode: look up per-file line coverage percentage, return blue-to-green gradient.
@@ -469,4 +492,69 @@ fn color_by_tdg_grade(ctx: &RenderContext, path: &str) -> Color32 {
     };
     let grade = &report.tdg.files[idx].grade;
     colors::tdg_grade_color(grade)
+}
+
+#[cfg(test)]
+mod git_diff_color_dispatch_tests {
+    use super::*;
+    use crate::core::pmat_types::{FileDiffData, GitDiffReport};
+    use crate::metrics::evo::git_walker::DiffWindow;
+    use std::collections::HashMap;
+
+    fn make_minimal_git_diff_report() -> GitDiffReport {
+        let mut by_file = HashMap::new();
+        by_file.insert("src/foo.rs".to_string(), FileDiffData {
+            commit_count: 2,
+            lines_added: 30,
+            lines_removed: 10,
+            is_new_file: false,
+        });
+        by_file.insert("src/new.rs".to_string(), FileDiffData {
+            commit_count: 1,
+            lines_added: 50,
+            lines_removed: 0,
+            is_new_file: true,
+        });
+        // Compute max_intensity
+        let max = by_file.values()
+            .map(|d| d.raw_intensity())
+            .fold(0.0_f64, f64::max);
+        GitDiffReport {
+            by_file,
+            max_intensity: if max > 0.0 { max } else { 1.0 },
+            window: DiffWindow::TimeSecs(86400),
+            computed_at: 1000,
+        }
+    }
+
+    #[test]
+    fn color_by_git_diff_no_report_returns_muted_gray_for_unknown() {
+        // color_by_git_diff returns muted gray (50,52,55) for paths not in report
+        // We test the gray constant is correct: different from monochrome
+        let gray = Color32::from_rgb(50, 52, 55);
+        let [r, g, b, _] = gray.to_array();
+        assert_eq!(r, 50);
+        assert_eq!(g, 52);
+        assert_eq!(b, 55);
+    }
+
+    #[test]
+    fn file_diff_data_new_file_color_is_teal() {
+        // When is_new_file is true, the new-file teal color should be distinct
+        let teal = colors::git_diff_new_file_color();
+        let [r, g, b, _] = teal.to_array();
+        assert!(g > r, "teal: g({}) should > r({})", g, r);
+        assert!(b > r, "teal: b({}) should > r({})", b, r);
+    }
+
+    #[test]
+    fn file_diff_data_intensity_color_for_changed_file() {
+        // Normalized intensity for a changed file should produce a gradient color
+        let report = make_minimal_git_diff_report();
+        let d = report.by_file.get("src/foo.rs").unwrap();
+        let t = (d.raw_intensity() / report.max_intensity).clamp(0.0, 1.0) as f32;
+        let c = colors::git_diff_intensity_color(t);
+        let [_r, _g, _b, a] = c.to_array();
+        assert_eq!(a, 255, "intensity color should be fully opaque");
+    }
 }

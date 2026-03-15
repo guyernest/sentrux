@@ -20,7 +20,7 @@ use crate::core::heat::HeatTracker;
 use crate::core::settings::ThemeConfig;
 use crate::layout::viewport::ViewportTransform;
 use crate::core::settings::Settings;
-use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport};
+use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
@@ -85,6 +85,9 @@ pub struct RenderContext<'a> {
     /// Pre-computed maximum raw risk value across all files.
     /// Used by `color_by_risk` to normalize the risk gradient so the riskiest file is always red.
     pub max_risk_raw: f64,
+    /// Git diff overlay report for GitDiff color mode.
+    /// Set to None until Plan 03-02 wires it into AppState and populates RenderContext.
+    pub git_diff_report: Option<&'a GitDiffReport>,
 }
 
 /// Orchestrate a single frame of rendering onto the canvas painter.
