@@ -70,6 +70,16 @@ impl SentruxApp {
                     self.state.coverage_running = false;
                     ctx.request_repaint();
                 }
+                ScanMsg::GitDiffReady(report) => {
+                    // Plan 03-02 will store report on AppState; for now, log receipt.
+                    eprintln!("[git-diff] report ready: {} files, max_intensity={:.2}",
+                        report.by_file.len(), report.max_intensity);
+                    ctx.request_repaint();
+                }
+                ScanMsg::GitDiffError(msg) => {
+                    eprintln!("[git-diff] {msg}");
+                    ctx.request_repaint();
+                }
             }
         }
     }

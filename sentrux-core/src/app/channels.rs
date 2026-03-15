@@ -76,6 +76,10 @@ pub enum ScanMsg {
     CoverageReady(CoverageReport),
     /// On-demand coverage run failed — error message for logging
     CoverageError(String),
+    /// On-demand git diff analysis completed — carries the report to store on AppState
+    GitDiffReady(crate::core::pmat_types::GitDiffReport),
+    /// On-demand git diff analysis failed — error message for logging
+    GitDiffError(String),
 }
 
 /// Messages from main thread → layout thread.
@@ -176,6 +180,25 @@ mod tests {
         // Lookup of second file
         let idx2 = report.by_path.get("src/lib.rs").expect("src/lib.rs should be in by_path");
         assert_eq!(report.tdg.files[*idx2].file_path, "./src/lib.rs");
+    }
+
+    /// ScanMsg has GitDiffReady and GitDiffError variants
+    #[test]
+    fn scan_msg_has_git_diff_variants() {
+        use crate::core::pmat_types::GitDiffReport;
+        use crate::metrics::evo::git_walker::DiffWindow;
+        use std::collections::HashMap;
+        let report = GitDiffReport {
+            by_file: HashMap::new(),
+            max_intensity: 1.0,
+            window: DiffWindow::TimeSecs(86400),
+            computed_at: 0,
+        };
+        let msg = ScanMsg::GitDiffReady(report);
+        assert!(matches!(msg, ScanMsg::GitDiffReady(_)));
+
+        let err_msg = ScanMsg::GitDiffError("test error".to_string());
+        assert!(matches!(err_msg, ScanMsg::GitDiffError(_)));
     }
 
     /// Scan pipeline contract: ScanReports can carry a PmatReport and new graph/clippy fields.

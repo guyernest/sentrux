@@ -332,6 +332,7 @@ fn scanner_thread_sends_complete() {
             Ok(ScanMsg::Progress(_)) | Ok(ScanMsg::TreeReady(..)) => continue,
             Ok(ScanMsg::Error(e, _gen)) => panic!("Scanner error: {}", e),
             Ok(ScanMsg::CoverageReady(_)) | Ok(ScanMsg::CoverageError(_)) => continue,
+            Ok(ScanMsg::GitDiffReady(_)) | Ok(ScanMsg::GitDiffError(_)) => continue,
             Err(_) => continue,
         }
     }
