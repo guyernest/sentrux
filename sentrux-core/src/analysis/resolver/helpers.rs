@@ -105,7 +105,9 @@ fn try_suffix_resolve_inner(
 ) -> Option<String> {
     let stripped = specifier.rfind('.').map(|i| &specifier[..i]);
     let specs: &[&str] = if let Some(s) = stripped {
-        if specifier.rfind('/').is_none_or(|slash| specifier.rfind('.').unwrap() > slash) {
+        // dot_pos = s.len() (s is the slice before the dot)
+        let slash_pos = specifier.rfind('/');
+        if slash_pos.map_or(true, |slash| s.len() > slash) {
             &[specifier, s]
         } else {
             &[specifier]
@@ -120,7 +122,11 @@ fn try_suffix_resolve_inner(
             if let Some(candidates) = env.suffix_index.index.get(remainder) {
                 return Some(pick_closest(candidates, file_dir_str).to_string());
             }
-            remainder = &remainder[remainder.find('/').unwrap() + 1..];
+            if let Some(slash) = remainder.find('/') {
+                remainder = &remainder[slash + 1..];
+            } else {
+                break;
+            }
         }
         if let Some(candidates) = env.suffix_index.index.get(remainder) {
             if candidates.len() == 1 {

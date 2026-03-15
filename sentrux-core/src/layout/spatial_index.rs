@@ -150,7 +150,7 @@ fn find_smallest_containing<'a>(
         let r = &rects[rect_idx];
         if wx >= r.x && wx < r.x + r.w && wy >= r.y && wy < r.y + r.h {
             let area = r.w * r.h;
-            if best.is_none() || area < best.unwrap().1 {
+            if best.map_or(true, |b| area < b.1) {
                 best = Some((rect_idx, area));
             }
         }

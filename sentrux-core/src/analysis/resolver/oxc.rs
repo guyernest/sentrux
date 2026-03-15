@@ -193,7 +193,10 @@ fn resolve_all_parallel(
                     borrow.0 = setup.root_key;
                     borrow.1 = Some(Resolver::new(setup.resolve_opts.clone()));
                 }
-                let resolver = borrow.1.as_ref().unwrap();
+                let resolver = match borrow.1.as_ref() {
+                    Some(r) => r,
+                    None => return Vec::new(),
+                };
                 resolve_file_imports(resolver, &dir, imports, file, &ctx)
             })
         })

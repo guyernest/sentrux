@@ -607,7 +607,7 @@ impl<'a> TarjanState<'a> {
     fn update_lowlink(&mut self, v: &'a str, w: &'a str) {
         if self.on_stack.contains(w) {
             let w_idx = self.index_map[w];
-            let v_low = self.lowlink.get_mut(v).unwrap();
+            let v_low = self.lowlink.get_mut(v).expect("tarjan invariant: v was visited before update_lowlink");
             if w_idx < *v_low {
                 *v_low = w_idx;
             }
@@ -618,7 +618,7 @@ impl<'a> TarjanState<'a> {
     fn pop_scc(&mut self, root: &str) {
         let mut scc = Vec::new();
         loop {
-            let w = self.stack.pop().unwrap();
+            let w = self.stack.pop().expect("tarjan invariant: stack is non-empty when popping SCC");
             self.on_stack.remove(w);
             scc.push(w.to_string());
             if w == root { break; }
@@ -631,7 +631,7 @@ impl<'a> TarjanState<'a> {
 
     /// Propagate lowlink from child to parent after DFS backtrack.
     fn propagate_lowlink(&mut self, parent: &'a str, child_low: u32) {
-        let parent_low = self.lowlink.get_mut(parent).unwrap();
+        let parent_low = self.lowlink.get_mut(parent).expect("tarjan invariant: parent was visited before propagate_lowlink");
         if child_low < *parent_low {
             *parent_low = child_low;
         }
@@ -755,7 +755,8 @@ fn longest_path_dfs<'a>(
         on_stack.insert(start);
 
         while !stack.is_empty() {
-            let (node, idx, max_child) = stack.last_mut().unwrap();
+            let (node, idx, max_child) = stack.last_mut().expect("tarjan invariant: stack is non-empty in while !stack.is_empty()");
+
             let neighbors = adj.get(*node).map(|v| v.as_slice()).unwrap_or(&[]);
 
             if *idx < neighbors.len() {

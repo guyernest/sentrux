@@ -269,7 +269,7 @@ fn pascal_to_snake(s: &str) -> String {
                     result.push('_');
                 }
             }
-            result.push(c.to_lowercase().next().unwrap());
+            result.push(c.to_lowercase().next().unwrap_or(c));
         } else {
             result.push(c);
         }
@@ -385,7 +385,10 @@ fn try_extract_base_name(arg: tree_sitter::Node, content: &[u8]) -> Option<Strin
 /// Collect identifiers/attributes from a superclass/argument_list node.
 fn collect_bases_from_list(list_node: tree_sitter::Node, content: &[u8], bases: &mut Vec<String>) {
     for j in 0..list_node.child_count() {
-        let arg = list_node.child(j).unwrap();
+        let arg = match list_node.child(j) {
+            Some(a) => a,
+            None => continue,
+        };
         if let Some(name) = try_extract_base_name(arg, content) {
             bases.push(name);
         }
@@ -395,7 +398,7 @@ fn collect_bases_from_list(list_node: tree_sitter::Node, content: &[u8], bases: 
 /// Collect base classes for Python: class Foo(Bar, Baz): → argument_list/superclasses
 pub(super) fn extract_bases_python(node: tree_sitter::Node, content: &[u8], bases: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
+        let child = match node.child(i) { Some(c) => c, None => continue };
         if child.kind() == "argument_list" || child.kind() == "superclasses" {
             collect_bases_from_list(child, content, bases);
         }
@@ -405,7 +408,7 @@ pub(super) fn extract_bases_python(node: tree_sitter::Node, content: &[u8], base
 /// Collect base classes for Java/Kotlin/C#/Scala via superclass/interface nodes.
 pub(super) fn extract_bases_jvm(node: tree_sitter::Node, content: &[u8], bases: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
+        let child = match node.child(i) { Some(c) => c, None => continue };
         match child.kind() {
             "superclass" | "super_interfaces" | "type_list"
             | "extends_type_clause" | "class_type" | "delegation_specifiers" => {
@@ -419,7 +422,7 @@ pub(super) fn extract_bases_jvm(node: tree_sitter::Node, content: &[u8], bases: 
 /// Collect base classes by matching child node kinds against a set of patterns.
 pub(super) fn extract_bases_by_kinds(node: tree_sitter::Node, content: &[u8], kinds: &[&str], bases: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
+        let child = match node.child(i) { Some(c) => c, None => continue };
         if kinds.contains(&child.kind()) {
             collect_type_identifiers(child, content, bases);
         }
@@ -429,7 +432,7 @@ pub(super) fn extract_bases_by_kinds(node: tree_sitter::Node, content: &[u8], ki
 /// Generic fallback: collect base classes from children whose kind contains inheritance keywords.
 pub(super) fn extract_bases_generic(node: tree_sitter::Node, content: &[u8], bases: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
+        let child = match node.child(i) { Some(c) => c, None => continue };
         let k = child.kind();
         if k.contains("superclass") || k.contains("extends")
             || k.contains("base_class") || k.contains("heritage")
@@ -477,6 +480,8 @@ fn collect_type_identifiers_inner(node: tree_sitter::Node, content: &[u8], out: 
         }
     }
     for i in 0..node.child_count() {
-        collect_type_identifiers_inner(node.child(i).unwrap(), content, out, depth + 1);
+        if let Some(child) = node.child(i) {
+            collect_type_identifiers_inner(child, content, out, depth + 1);
+        }
     }
 }

@@ -404,7 +404,10 @@ fn is_parameter_kind(kind: &str) -> bool {
 fn count_params_in_list(param_list: tree_sitter::Node, content: &[u8]) -> u32 {
     let mut count = 0u32;
     for j in 0..param_list.named_child_count() {
-        let param = param_list.named_child(j).unwrap();
+        let param = match param_list.named_child(j) {
+            Some(p) => p,
+            None => continue,
+        };
         if is_self_or_this(param, content) { continue; }
         if is_parameter_kind(param.kind()) {
             count += 1;
@@ -416,7 +419,10 @@ fn count_params_in_list(param_list: tree_sitter::Node, content: &[u8]) -> u32 {
 /// Count function parameters from a tree-sitter node, excluding self/this.
 pub(crate) fn count_parameters(node: tree_sitter::Node, content: &[u8]) -> u32 {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
+        let child = match node.child(i) {
+            Some(c) => c,
+            None => continue,
+        };
         if PARAM_LIST_KINDS.contains(&child.kind()) {
             return count_params_in_list(child, content);
         }
