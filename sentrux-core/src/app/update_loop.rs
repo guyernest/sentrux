@@ -47,6 +47,7 @@ impl SentruxApp {
         Self {
             state,
             scan_tx: scan_cmd_tx,
+            scan_msg_tx,
             scan_rx: scan_msg_rx,
             layout_tx: layout_req_tx,
             layout_rx: layout_msg_rx,
@@ -259,6 +260,7 @@ impl SentruxApp {
             graph_metrics_report: self.state.graph_metrics_report.as_ref(),
             clippy_report: self.state.clippy_report.as_ref(),
             coverage_report: self.state.coverage_report.as_ref(),
+            community_highlight: self.state.community_highlight.as_ref(),
             heat: &self.state.heat,
             frame_instant: self.state.frame_instant,
             frame_now_secs: self.state.frame_now_secs,

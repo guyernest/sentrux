@@ -21,7 +21,7 @@ use crate::core::settings::ThemeConfig;
 use crate::layout::viewport::ViewportTransform;
 use crate::core::settings::Settings;
 use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -79,6 +79,9 @@ pub struct RenderContext<'a> {
     pub interacting: bool,
     /// Absolute path of the scan root (for status bar display)
     pub root_path: Option<&'a str>,
+    /// Community highlight set — file paths in the selected node's BFS community.
+    /// Used in Risk mode to spotlight connected files on the treemap.
+    pub community_highlight: Option<&'a HashSet<String>>,
 }
 
 /// Orchestrate a single frame of rendering onto the canvas painter.

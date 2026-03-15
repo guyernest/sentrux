@@ -5,8 +5,11 @@
 //! uses the ViewportTransform for world/screen conversion.
 
 use crate::renderer::minimap;
+use crate::layout::types::ColorMode;
+use crate::core::snapshot::Snapshot;
 use std::sync::Arc;
 use std::time::Duration;
+use std::collections::HashSet;
 
 use super::SentruxApp;
 
@@ -177,15 +180,24 @@ impl SentruxApp {
     }
 
     /// Toggle file selection based on the currently hovered path.
+    /// When in Risk mode, computes a BFS community highlight over the import graph.
     fn toggle_file_selection(&mut self) {
         if let Some(path) = &self.state.hovered_path {
             if self.state.selected_path.as_deref() == Some(path) {
                 self.state.selected_path = None;
+                self.state.community_highlight = None;
             } else {
-                self.state.selected_path = Some(path.clone());
+                let path = path.clone();
+                self.state.community_highlight = compute_community_highlight(
+                    &path,
+                    self.state.color_mode,
+                    self.state.snapshot.as_ref(),
+                );
+                self.state.selected_path = Some(path);
             }
         } else {
             self.state.selected_path = None;
+            self.state.community_highlight = None;
         }
     }
 
@@ -334,5 +346,55 @@ impl SentruxApp {
             }
         });
         (hide_action, unhide_action)
+    }
+}
+
+/// Compute the BFS connected component for `path` in the import graph.
+/// Returns Some(set) when in Risk mode and a snapshot is available, None otherwise.
+///
+/// BFS traverses import edges in both directions (from and to) so the community
+/// includes files that import the selected file AND files that it imports.
+fn compute_community_highlight(
+    path: &str,
+    color_mode: ColorMode,
+    snapshot: Option<&Arc<Snapshot>>,
+) -> Option<HashSet<String>> {
+    if color_mode != ColorMode::Risk {
+        return None;
+    }
+    let snap = snapshot?;
+    if snap.import_graph.is_empty() {
+        return None;
+    }
+
+    // Build adjacency lists (both directions)
+    let mut adjacency: std::collections::HashMap<&str, Vec<&str>> =
+        std::collections::HashMap::new();
+    for edge in &snap.import_graph {
+        adjacency.entry(edge.from_file.as_str()).or_default().push(edge.to_file.as_str());
+        adjacency.entry(edge.to_file.as_str()).or_default().push(edge.from_file.as_str());
+    }
+
+    // BFS from the selected path
+    let mut visited: HashSet<String> = HashSet::new();
+    let mut queue: std::collections::VecDeque<&str> = std::collections::VecDeque::new();
+    queue.push_back(path);
+    visited.insert(path.to_string());
+
+    while let Some(current) = queue.pop_front() {
+        if let Some(neighbors) = adjacency.get(current) {
+            for &neighbor in neighbors {
+                if visited.insert(neighbor.to_string()) {
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+    }
+
+    // Only return a highlight set if there are other connected files
+    if visited.len() > 1 {
+        Some(visited)
+    } else {
+        None
     }
 }

@@ -17,6 +17,7 @@ pub(crate) struct PanelResult {
 fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut PanelResult) {
     egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
         let old_layout_mode = app.state.layout_mode;
+        let old_color_mode = app.state.color_mode;
         let (lc, vc) = crate::app::toolbar::draw_toolbar(ui, &mut app.state);
         if lc {
             result.layout_changed = true;
@@ -27,7 +28,52 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
         if vc {
             result.visual_changed = true;
         }
+        // Clear community highlight when color mode changes away from Risk
+        if app.state.color_mode != old_color_mode
+            && app.state.color_mode != crate::layout::types::ColorMode::Risk
+        {
+            app.state.community_highlight = None;
+        }
     });
+
+    // Handle coverage_requested flag — spawn background thread with channel access
+    if app.state.coverage_requested {
+        app.state.coverage_requested = false;
+        maybe_spawn_coverage_thread(app);
+    }
+}
+
+/// Spawn a background coverage thread if conditions are met.
+/// Sets coverage_running=true and sends CoverageReady/CoverageError via scan_msg_tx.
+fn maybe_spawn_coverage_thread(app: &mut SentruxApp) {
+    let root = match app.state.root_path.clone() {
+        Some(r) => r,
+        None => return,
+    };
+    if app.state.coverage_running || app.state.scanning {
+        return;
+    }
+    app.state.coverage_running = true;
+    let msg_tx = app.scan_msg_tx.clone();
+    match std::thread::Builder::new()
+        .name("coverage".into())
+        .spawn(move || {
+            let result = crate::analysis::pmat_adapter::run_coverage(&root, 0);
+            let msg = match result {
+                Some(report) => crate::app::channels::ScanMsg::CoverageReady(report),
+                None => crate::app::channels::ScanMsg::CoverageError(
+                    "cargo-llvm-cov failed or not installed".into()
+                ),
+            };
+            let _ = msg_tx.send(msg);
+        })
+    {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("[app] failed to spawn coverage thread: {}", e);
+            app.state.coverage_running = false;
+        }
+    }
 }
 
 /// Draw settings panel if open, updating result flags.

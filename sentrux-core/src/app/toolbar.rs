@@ -7,6 +7,7 @@ use crate::layout::types::{ColorMode, EdgeFilter, FocusMode, LayoutMode, ScaleMo
 use crate::core::settings::Theme;
 use crate::license;
 use super::state::AppState;
+use std::sync::OnceLock;
 
 /// Draw the toolbar panel. Returns (layout_changed, visual_changed).
 /// layout_changed = size/scale/layout mode changed (needs re-layout).
@@ -146,18 +147,37 @@ fn draw_scale_mode_combo(ui: &mut egui::Ui, state: &mut AppState, layout_changed
         });
 }
 
-/// Visual group: Color mode and Theme combo boxes.
+/// Cached cargo-llvm-cov availability — checked at most once per process.
+static LLVM_COV_AVAILABLE: OnceLock<bool> = OnceLock::new();
+
+/// Check whether cargo-llvm-cov is available (cached).
+fn llvm_cov_available() -> bool {
+    *LLVM_COV_AVAILABLE.get_or_init(|| {
+        crate::analysis::pmat_adapter::check_llvm_cov_available()
+    })
+}
+
+/// Visual group: Color mode (with Coverage gating) and Theme combo boxes.
 fn draw_visual_group(ui: &mut egui::Ui, state: &mut AppState, visual_changed: &mut bool) {
     ui.label(egui::RichText::new("color:").small().weak());
     let color_label = state.color_mode.label();
-    let tier = license::current_tier();
-    let available_modes: &[ColorMode] = if tier.is_pro() { ColorMode::ALL } else { ColorMode::FREE };
+    let available_modes = ColorMode::ALL;
     egui::ComboBox::from_id_salt("color_mode")
         .selected_text(color_label)
         .width(80.0)
         .show_ui(ui, |ui| {
             for &mode in available_modes {
-                if ui.selectable_value(&mut state.color_mode, mode, mode.label()).changed() {
+                if mode == ColorMode::Coverage && state.coverage_report.is_none() {
+                    // Grayed out: coverage data not yet collected
+                    let tooltip = if llvm_cov_available() {
+                        "Run coverage first (button below)"
+                    } else {
+                        "cargo-llvm-cov not installed — run: cargo install cargo-llvm-cov"
+                    };
+                    ui.add_enabled(false, egui::Button::new(
+                        egui::RichText::new(mode.label()).weak()
+                    )).on_disabled_hover_text(tooltip);
+                } else if ui.selectable_value(&mut state.color_mode, mode, mode.label()).changed() {
                     *visual_changed = true;
                 }
             }
@@ -178,6 +198,25 @@ fn draw_visual_group(ui: &mut egui::Ui, state: &mut AppState, visual_changed: &m
                 }
             }
         });
+
+    draw_coverage_button(ui, state);
+}
+
+/// Draw the "Run Coverage" button. Sets coverage_requested flag when clicked.
+/// Disabled while coverage is running or no folder is open.
+fn draw_coverage_button(ui: &mut egui::Ui, state: &mut AppState) {
+    let can_run = state.root_path.is_some() && !state.coverage_running && !state.scanning;
+    let btn_label = if state.coverage_running { "Running..." } else { "Run Coverage" };
+    let btn = ui.add_enabled(
+        can_run,
+        egui::Button::new(egui::RichText::new(btn_label).small()),
+    );
+    if btn.clicked() {
+        state.coverage_requested = true;
+    }
+    if !llvm_cov_available() {
+        btn.on_disabled_hover_text("cargo-llvm-cov not installed — run: cargo install cargo-llvm-cov");
+    }
 }
 
 /// Filter group: Focus mode, Edge filter, edge/DSM/activity toggles.

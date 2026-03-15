@@ -36,6 +36,8 @@ pub struct SentruxApp {
     pub(crate) state: AppState,
     /// Send commands to the scanner thread
     pub(crate) scan_tx: Sender<ScanCommand>,
+    /// Send scan messages to the main thread (used for on-demand coverage results)
+    pub(crate) scan_msg_tx: Sender<ScanMsg>,
     /// Receive results from the scanner thread
     pub(crate) scan_rx: Receiver<ScanMsg>,
     /// Send layout requests to the layout thread

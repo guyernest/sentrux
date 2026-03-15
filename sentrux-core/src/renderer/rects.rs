@@ -77,6 +77,9 @@ pub fn draw_rects(
 
 /// Build set of files connected to the active (hovered/selected) file via edges.
 /// Returns None if no file is active or not in file-level full-LOD mode.
+///
+/// When in Risk mode and community_highlight is set, uses the BFS community
+/// set instead of the edge-adjacency spotlight (broader highlight).
 fn build_connected_set<'a>(
     rd: &'a RenderData,
     ctx: &'a RenderContext,
@@ -85,6 +88,15 @@ fn build_connected_set<'a>(
 ) -> Option<HashSet<&'a str>> {
     if kind != RectKind::File || !lod_full {
         return None;
+    }
+    // Risk mode with community highlight: use BFS community set
+    if ctx.color_mode == ColorMode::Risk {
+        if let Some(community) = ctx.community_highlight {
+            let set: HashSet<&str> = community.iter().map(|s| s.as_str()).collect();
+            if !set.is_empty() {
+                return Some(set);
+            }
+        }
     }
     let active_file = ctx.selected_path.or(ctx.hovered_path);
     active_file.map(|af| {

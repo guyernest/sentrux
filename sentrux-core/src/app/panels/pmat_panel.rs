@@ -11,7 +11,8 @@ use crate::core::pmat_types::{grade_to_display, PmatReport};
 /// Draw the PMAT analysis section inside the metrics panel.
 ///
 /// When no pmat_report is available, shows a graceful fallback message.
-/// When available, shows health summary and (if a file is selected) TDG breakdown.
+/// When available, shows health summary and (if a file is selected) TDG breakdown,
+/// plus Code Rank, Test Coverage, and Clippy Analysis sections.
 pub fn draw_pmat_panel(ui: &mut Ui, state: &AppState) {
     let Some(report) = &state.pmat_report else {
         ui.label(
@@ -37,6 +38,12 @@ pub fn draw_pmat_panel(ui: &mut Ui, state: &AppState) {
     // --- File Detail (if file selected) ---
     if let Some(selected) = &state.selected_path {
         draw_file_detail(ui, report, selected);
+        ui.separator();
+        draw_rank_section(ui, state, selected);
+        ui.separator();
+        draw_coverage_section(ui, state, selected);
+        ui.separator();
+        draw_clippy_section(ui, state, selected);
     } else {
         ui.label(
             egui::RichText::new("Select a file to see TDG breakdown")
@@ -45,6 +52,136 @@ pub fn draw_pmat_panel(ui: &mut Ui, state: &AppState) {
                 .color(ui.visuals().weak_text_color()),
         );
     }
+}
+
+/// Draw the Code Rank (PageRank + centrality) section for the selected file.
+fn draw_rank_section(ui: &mut Ui, state: &AppState, path: &str) {
+    egui::CollapsingHeader::new(
+        egui::RichText::new("Code Rank").monospace().size(9.0).strong(),
+    )
+    .id_salt("rank_section")
+    .default_open(true)
+    .show(ui, |ui| {
+        let Some(gm) = &state.graph_metrics_report else {
+            ui.label(
+                egui::RichText::new("No graph metrics data")
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+            return;
+        };
+        let basename = path.rsplit('/').next().unwrap_or(path);
+        let Some(&idx) = gm.by_filename.get(basename) else {
+            ui.label(
+                egui::RichText::new("No centrality data for this file")
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+            return;
+        };
+        let node = &gm.data.nodes[idx];
+        // Note: multiple files can share the same basename (e.g. mod.rs)
+        if path.ends_with("mod.rs") || path.ends_with("lib.rs") || path.ends_with("main.rs") {
+            ui.label(
+                egui::RichText::new("(matched by filename)")
+                    .monospace()
+                    .size(8.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+        }
+        label_row(ui, "PageRank:", &format!("{:.4}", node.pagerank));
+        label_row(ui, "Degree Centrality:", &format!("{:.3}", node.degree_centrality));
+        label_row(ui, "Betweenness:", &format!("{:.3}", node.betweenness_centrality));
+        label_row(ui, "In-degree:", &format!("{}", node.in_degree));
+        label_row(ui, "Out-degree:", &format!("{}", node.out_degree));
+    });
+}
+
+/// Draw the Test Coverage section for the selected file.
+fn draw_coverage_section(ui: &mut Ui, state: &AppState, path: &str) {
+    egui::CollapsingHeader::new(
+        egui::RichText::new("Test Coverage").monospace().size(9.0).strong(),
+    )
+    .id_salt("coverage_section")
+    .default_open(true)
+    .show(ui, |ui| {
+        let Some(cov) = &state.coverage_report else {
+            ui.label(
+                egui::RichText::new("Coverage not collected — click Run Coverage in toolbar")
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+            return;
+        };
+        let Some(&idx) = cov.by_path.get(path) else {
+            ui.label(
+                egui::RichText::new("No coverage data for this file")
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+            return;
+        };
+        let entry = &cov.files[idx];
+        label_row(ui, "Lines:", &format!("{:.1}%", entry.summary.lines.percent));
+        label_row(ui, "Functions:", &format!("{:.1}%", entry.summary.functions.percent));
+    });
+}
+
+/// Draw the Clippy Analysis section for the selected file.
+fn draw_clippy_section(ui: &mut Ui, state: &AppState, path: &str) {
+    egui::CollapsingHeader::new(
+        egui::RichText::new("Clippy Analysis").monospace().size(9.0).strong(),
+    )
+    .id_salt("clippy_section")
+    .default_open(true)
+    .show(ui, |ui| {
+        let Some(clippy) = &state.clippy_report else {
+            ui.label(
+                egui::RichText::new("No clippy data")
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+            return;
+        };
+        let Some(file_data) = clippy.by_file.get(path) else {
+            ui.label(
+                egui::RichText::new("No clippy warnings")
+                    .monospace()
+                    .size(9.0)
+                    .color(crate::renderer::colors::STATUS_PASS),
+            );
+            return;
+        };
+        ui.label(
+            egui::RichText::new(format!("{} warnings", file_data.total))
+                .monospace()
+                .size(9.0),
+        );
+        // Show categories sorted by count descending
+        let mut cats: Vec<(&String, &u32)> = file_data.by_category.iter().collect();
+        cats.sort_by(|a, b| b.1.cmp(a.1));
+        for (cat, count) in cats {
+            ui.label(
+                egui::RichText::new(format!("  {} {}", count, cat))
+                    .monospace()
+                    .size(9.0)
+                    .color(ui.visuals().weak_text_color()),
+            );
+        }
+    });
+}
+
+/// Render a label+value row.
+fn label_row(ui: &mut Ui, label: &str, value: &str) {
+    ui.horizontal(|ui| {
+        ui.label(egui::RichText::new(label).monospace().size(9.0));
+        ui.label(egui::RichText::new(value).monospace().size(9.0));
+    });
 }
 
 /// Draw the project health summary section.
@@ -103,14 +240,11 @@ fn draw_health_summary(ui: &mut Ui, report: &PmatReport) {
         )
         .id_source("pmat_categories")
         .show(ui, |ui| {
-            let mut categories: Vec<(&String, &crate::core::pmat_types::PmatScoreCategory)> =
-                repo.categories.iter().collect();
-            categories.sort_by_key(|(name, _)| name.as_str());
-            for (name, cat) in categories {
+            for (name, cat) in &repo.categories {
                 let status_color = match cat.status.as_str() {
-                    "Pass" => egui::Color32::from_rgb(72, 191, 145),
-                    "Warning" => egui::Color32::from_rgb(255, 193, 7),
-                    _ => egui::Color32::from_rgb(244, 67, 54),
+                    "Pass" => crate::renderer::colors::STATUS_PASS,
+                    "Warning" => crate::renderer::colors::STATUS_WARN,
+                    _ => crate::renderer::colors::STATUS_FAIL,
                 };
                 ui.horizontal(|ui| {
                     ui.colored_label(status_color, egui::RichText::new("●").size(9.0));
@@ -198,7 +332,7 @@ fn draw_file_detail(ui: &mut Ui, report: &PmatReport, path: &str) {
 
     if score.has_critical_defects {
         ui.colored_label(
-            egui::Color32::from_rgb(244, 67, 54),
+            crate::renderer::colors::STATUS_FAIL,
             egui::RichText::new(format!("{} critical defect(s)", score.critical_defects_count))
                 .monospace()
                 .size(9.0),
@@ -207,17 +341,11 @@ fn draw_file_detail(ui: &mut Ui, report: &PmatReport, path: &str) {
 }
 
 /// Render a single component score row: "Label: value".
-fn score_row(ui: &mut Ui, label: &str, value: f64) {
+fn score_row(ui: &mut Ui, label: &'static str, value: f64) {
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new(format!("{label}:")).monospace().size(9.0));
+        ui.label(egui::RichText::new(label).monospace().size(9.0));
         ui.label(egui::RichText::new(format!("{value:.1}")).monospace().size(9.0));
     });
-}
-
-/// Helper: whether a badge/detail should be drawn based on size threshold.
-/// Extracted for testability.
-pub fn should_show_detail(pmat_report: Option<&PmatReport>, selected_path: Option<&str>) -> bool {
-    pmat_report.is_some() && selected_path.is_some()
 }
 
 #[cfg(test)]
@@ -279,20 +407,6 @@ mod tests {
         let idx = idx.unwrap();
         assert_eq!(report.tdg.files[*idx].grade, "A");
         assert!((report.tdg.files[*idx].total - 91.0).abs() < 0.01);
-    }
-
-    /// Panel contract: with pmat_report=None and selected_path=None, should_show_detail is false.
-    #[test]
-    fn should_show_detail_none_report_is_false() {
-        assert!(!should_show_detail(None, None));
-        assert!(!should_show_detail(None, Some("src/main.rs")));
-    }
-
-    /// Panel contract: with both pmat_report and selected_path set, should_show_detail is true.
-    #[test]
-    fn should_show_detail_with_report_and_path_is_true() {
-        let report = make_test_report(&[("./src/main.rs", "B", 70.0)]);
-        assert!(should_show_detail(Some(&report), Some("src/main.rs")));
     }
 
     /// Panel render contract: report with no matching path for selected file returns gracefully.

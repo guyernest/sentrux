@@ -175,6 +175,11 @@ pub struct AppState {
     /// blocking the UI (especially on Linux where rfd blocks the event loop).
     pub folder_picker_requested: bool,
 
+    /// Flag set by toolbar when "Run Coverage" is clicked.
+    /// The app handles spawning the background thread in draw_panels.rs to avoid
+    /// blocking the UI and to gain access to the scan channel sender.
+    pub coverage_requested: bool,
+
     // ── Context menu / hide ──
     /// Paths hidden by the user (files or directory prefixes). Files whose path
     /// matches or starts with a hidden prefix get weight 0 in layout.
@@ -280,6 +285,7 @@ impl AppState {
             community_highlight: None,
             impact_files: None,
             folder_picker_requested: false,
+            coverage_requested: false,
             hidden_paths: Arc::new(HashSet::new()),
             context_menu_target: None,
         }
