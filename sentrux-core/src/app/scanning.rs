@@ -605,6 +605,7 @@ impl SentruxApp {
         // Reset timeline navigator data — stale for new directory
         self.state.milestone_infos.clear();
         self.state.timeline_selection = None;
+        self.state.pre_timeline_color_mode = None;
         self.state.timeline_delta_report = None;
         self.state.delta_running = false;
         self.state.delta_requested = false;

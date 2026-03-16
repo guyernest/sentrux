@@ -208,6 +208,8 @@ pub struct AppState {
     pub milestone_infos: Vec<MilestoneInfo>,
     /// User's current timeline selection (milestone / phase / commit)
     pub timeline_selection: Option<TimelineSelection>,
+    /// Color mode saved before timeline selection — restored on reset
+    pub pre_timeline_color_mode: Option<ColorMode>,
 
     /// BUG 2 fix: flag set by toolbar when "Open Folder" is clicked.
     /// The app handles the actual dialog on a background thread to avoid
@@ -339,6 +341,7 @@ impl AppState {
             delta_requested: false,
             milestone_infos: Vec::new(),
             timeline_selection: None,
+            pre_timeline_color_mode: None,
             folder_picker_requested: false,
             coverage_requested: false,
             hidden_paths: Arc::new(HashSet::new()),

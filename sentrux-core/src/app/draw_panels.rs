@@ -857,6 +857,11 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
             state.delta_requested = true;
             match sha_opt {
                 Some(from_sha) => {
+                    // Save current color mode before switching to GitDiff
+                    if state.pre_timeline_color_mode.is_none() {
+                        state.pre_timeline_color_mode = Some(state.color_mode);
+                    }
+                    state.color_mode = ColorMode::GitDiff;
                     state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::CommitRange {
                         from: from_sha,
                         to: "HEAD".to_string(),
@@ -864,6 +869,10 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
                     state.git_diff_requested = true;
                 }
                 None => {
+                    // Selection cleared — restore previous color mode
+                    if let Some(prev) = state.pre_timeline_color_mode.take() {
+                        state.color_mode = prev;
+                    }
                     state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::default();
                     state.git_diff_requested = true;
                 }
@@ -893,6 +902,10 @@ pub(crate) fn draw_timeline_reset_button(ui: &mut egui::Ui, state: &mut crate::a
             state.timeline_selection = None;
             state.timeline_delta_report = None;
             state.delta_requested = false;
+            // Restore previous color mode
+            if let Some(prev) = state.pre_timeline_color_mode.take() {
+                state.color_mode = prev;
+            }
             // Restore default git diff window on reset
             state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::default();
             state.git_diff_requested = true;
