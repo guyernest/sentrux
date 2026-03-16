@@ -8,6 +8,7 @@ use egui::Ui;
 use crate::app::state::AppState;
 use crate::core::pmat_types::{grade_to_display, PmatReport};
 use crate::layout::types::ColorMode;
+use crate::renderer::colors::{STATUS_PASS, STATUS_FAIL};
 
 /// Draw the PMAT analysis section inside the metrics panel.
 ///
@@ -45,6 +46,11 @@ pub fn draw_pmat_panel(ui: &mut Ui, state: &AppState) {
         draw_coverage_section(ui, state, selected);
         ui.separator();
         draw_clippy_section(ui, state, selected);
+        // Show quality delta section when a timeline delta report is available
+        if state.timeline_delta_report.is_some() {
+            ui.separator();
+            draw_delta_section(ui, state, selected);
+        }
         // Show git diff changes section when in GitDiff mode
         if state.color_mode == ColorMode::GitDiff {
             ui.separator();
@@ -302,6 +308,126 @@ fn draw_gsd_phase_section(ui: &mut Ui, state: &AppState, path: &str) {
             );
         }
     });
+}
+
+/// Draw the Quality Delta section for the selected file.
+///
+/// Shows TDG grade change, coverage % change, and clippy count change compared
+/// to the baseline snapshot. Only rendered when `state.timeline_delta_report` is Some
+/// and the selected file has a delta entry.
+fn draw_delta_section(ui: &mut Ui, state: &AppState, selected_path: &str) {
+    let delta_report = match &state.timeline_delta_report {
+        Some(r) => r,
+        None => return,
+    };
+    egui::CollapsingHeader::new(
+        egui::RichText::new("Quality Delta").monospace().size(9.0).strong(),
+    )
+    .id_salt("delta_section")
+    .default_open(true)
+    .show(ui, |ui| {
+        let delta = match delta_report.by_file.get(selected_path) {
+            Some(d) => d,
+            None => {
+                ui.label(
+                    egui::RichText::new("No delta data for this file")
+                        .monospace()
+                        .size(9.0)
+                        .color(ui.visuals().weak_text_color()),
+                );
+                return;
+            }
+        };
+
+        // TDG grade change
+        let tdg_delta = delta.tdg_grade_delta;
+        if tdg_delta != 0 {
+            let (sign, color) = if tdg_delta > 0 {
+                ("+", STATUS_PASS)
+            } else {
+                ("", STATUS_FAIL)
+            };
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("TDG Grade:").monospace().size(9.0));
+                ui.colored_label(
+                    color,
+                    egui::RichText::new(format!("{}{} grade(s)", sign, tdg_delta))
+                        .monospace()
+                        .size(9.0),
+                );
+            });
+        } else {
+            label_row(ui, "TDG Grade:", "no change");
+        }
+
+        // Coverage change
+        if let Some(cov_delta) = delta.coverage_pct_delta {
+            let (sign, color) = if cov_delta > 0.0 {
+                ("+", STATUS_PASS)
+            } else if cov_delta < 0.0 {
+                ("", STATUS_FAIL)
+            } else {
+                ("+", ui.visuals().weak_text_color())
+            };
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("Coverage:").monospace().size(9.0));
+                ui.colored_label(
+                    color,
+                    egui::RichText::new(format!("{}{:.1}%", sign, cov_delta))
+                        .monospace()
+                        .size(9.0),
+                );
+            });
+        }
+
+        // Clippy warnings change (negative = fewer = green)
+        if let Some(clippy_delta) = delta.clippy_count_delta {
+            let (sign, color) = if clippy_delta < 0 {
+                // Fewer warnings = improvement
+                ("", STATUS_PASS)
+            } else if clippy_delta > 0 {
+                ("+", STATUS_FAIL)
+            } else {
+                ("+", ui.visuals().weak_text_color())
+            };
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("Clippy:").monospace().size(9.0));
+                ui.colored_label(
+                    color,
+                    egui::RichText::new(format!("{}{} warning(s)", sign, clippy_delta))
+                        .monospace()
+                        .size(9.0),
+                );
+            });
+        }
+
+        // Baseline epoch as formatted date
+        let baseline_date = format_epoch_date(delta_report.baseline_epoch);
+        ui.label(
+            egui::RichText::new(format!("Compared to snapshot from {}", baseline_date))
+                .monospace()
+                .size(8.0)
+                .color(ui.visuals().weak_text_color()),
+        );
+    });
+}
+
+/// Format a Unix epoch as a short date string (YYYY-MM-DD) without chrono.
+fn format_epoch_date(epoch: i64) -> String {
+    // Days since Unix epoch (1970-01-01)
+    let days = epoch / 86400;
+    // Gregorian calendar computation
+    let z = days + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{:04}-{:02}-{:02}", y, m, d)
 }
 
 /// Render a label+value row.

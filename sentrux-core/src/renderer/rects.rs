@@ -10,6 +10,7 @@ use super::colors;
 use crate::core::heat;
 use super::RenderContext;
 use crate::layout::types::EdgeFilter;
+use crate::core::pmat_types::FileDeltaEntry;
 use egui::{Color32, CornerRadius, Stroke, StrokeKind};
 use std::collections::HashSet;
 
@@ -141,6 +142,68 @@ fn draw_section_rect(
     if lod_full && strip_h > 4.0 && screen_rect.width() > 20.0 {
         draw_section_header(dctx, screen_rect, r, ctx, strip_h);
     }
+
+    // Delta arrow overlay for directory: aggregate child deltas
+    if lod_full {
+        if let Some(delta_report) = ctx.delta_report {
+            let dir_prefix = if r.path.is_empty() || r.path == "/" {
+                String::new()
+            } else {
+                format!("{}/", r.path)
+            };
+            let agg = aggregate_dir_delta(&delta_report.by_file, &dir_prefix);
+            if let Some(agg_delta) = agg {
+                draw_delta_arrow(dctx.painter, screen_rect, &agg_delta);
+            }
+        }
+    }
+}
+
+/// Aggregate child file deltas for a directory path prefix.
+/// Returns None when no children have delta entries.
+/// Per CONTEXT.md: avg TDG change, total coverage change, total clippy change.
+fn aggregate_dir_delta(
+    by_file: &std::collections::HashMap<String, FileDeltaEntry>,
+    dir_prefix: &str,
+) -> Option<FileDeltaEntry> {
+    let children: Vec<&FileDeltaEntry> = if dir_prefix.is_empty() {
+        // Root: aggregate all entries
+        by_file.values().collect()
+    } else {
+        by_file.iter()
+            .filter(|(k, _)| k.starts_with(dir_prefix))
+            .map(|(_, v)| v)
+            .collect()
+    };
+
+    if children.is_empty() {
+        return None;
+    }
+
+    let count = children.len() as i32;
+    let tdg_sum: i32 = children.iter().map(|d| d.tdg_grade_delta).sum();
+    // Average TDG grade delta
+    let avg_tdg = tdg_sum / count;
+
+    let cov_total: Option<f64> = {
+        let cov_entries: Vec<f64> = children.iter()
+            .filter_map(|d| d.coverage_pct_delta)
+            .collect();
+        if cov_entries.is_empty() { None } else { Some(cov_entries.iter().sum()) }
+    };
+
+    let clippy_total: Option<i32> = {
+        let clippy_entries: Vec<i32> = children.iter()
+            .filter_map(|d| d.clippy_count_delta)
+            .collect();
+        if clippy_entries.is_empty() { None } else { Some(clippy_entries.iter().sum()) }
+    };
+
+    Some(FileDeltaEntry {
+        tdg_grade_delta: avg_tdg,
+        coverage_pct_delta: cov_total,
+        clippy_count_delta: clippy_total,
+    })
 }
 
 /// Render the header strip and label text for a section rectangle.
@@ -243,6 +306,13 @@ fn draw_file_rect(
         if inset_rect.width() > dctx.cw * 2.0 && inset_rect.height() > dctx.fs + dctx.py * 2.0 {
             draw_file_text(dctx, inset_rect, r, ctx);
         }
+
+        // Delta arrow overlay: green up or red down when timeline filter is active
+        if let Some(delta_report) = ctx.delta_report {
+            if let Some(delta) = delta_report.by_file.get(r.path.as_str()) {
+                draw_delta_arrow(dctx.painter, screen_rect, delta);
+            }
+        }
     }
 }
 
@@ -342,6 +412,47 @@ fn draw_stats_line(
             dctx.tc.text_secondary,
         );
     }
+}
+
+/// Compute the net delta score for a file delta entry.
+///
+/// Positive = improved, negative = regressed, zero = no meaningful change.
+/// - TDG grade delta: positive means grade improved
+/// - Coverage delta: positive means more coverage (improvement)
+/// - Clippy delta: negative means fewer warnings (improvement), so we negate
+pub(crate) fn compute_delta_net_score(delta: &FileDeltaEntry) -> i32 {
+    delta.tdg_grade_delta
+        + delta.coverage_pct_delta.map(|d| d.signum() as i32).unwrap_or(0)
+        - delta.clippy_count_delta.unwrap_or(0)
+}
+
+/// Render a green up-arrow or red down-arrow at the top-right of a rect when there is
+/// a non-zero net delta score. No-ops when rect is too small or delta is zero.
+fn draw_delta_arrow(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    delta: &FileDeltaEntry,
+) {
+    let net = compute_delta_net_score(delta);
+    if net == 0 {
+        return;
+    }
+    // Only draw if rect is large enough (at least 16px in both dimensions)
+    if rect.width() < 16.0 || rect.height() < 16.0 {
+        return;
+    }
+    let (symbol, color) = if net > 0 {
+        ("\u{25B2}", egui::Color32::from_rgb(80, 200, 80))   // green up triangle
+    } else {
+        ("\u{25BC}", egui::Color32::from_rgb(220, 60, 60))   // red down triangle
+    };
+    painter.text(
+        rect.right_top() + egui::vec2(-10.0, 4.0),
+        egui::Align2::RIGHT_TOP,
+        symbol,
+        egui::FontId::monospace(9.0),
+        color,
+    );
 }
 
 /// Compute file color based on current color mode. Used by both main canvas and minimap.
@@ -517,6 +628,56 @@ fn color_by_tdg_grade(ctx: &RenderContext, path: &str) -> Color32 {
     };
     let grade = &report.tdg.files[idx].grade;
     colors::tdg_grade_color(grade)
+}
+
+#[cfg(test)]
+mod delta_net_score_tests {
+    use super::compute_delta_net_score;
+    use crate::core::pmat_types::FileDeltaEntry;
+
+    #[test]
+    fn test_delta_net_score_improved() {
+        // tdg=3, coverage=+5.0, clippy=-2 => net = 3 + 1 - (-2) = 6
+        let delta = FileDeltaEntry {
+            tdg_grade_delta: 3,
+            coverage_pct_delta: Some(5.0),
+            clippy_count_delta: Some(-2),
+        };
+        assert_eq!(compute_delta_net_score(&delta), 6);
+    }
+
+    #[test]
+    fn test_delta_net_score_regressed() {
+        // tdg=-2, coverage=-1.0, clippy=+3 => net = -2 + (-1) - 3 = -6
+        let delta = FileDeltaEntry {
+            tdg_grade_delta: -2,
+            coverage_pct_delta: Some(-1.0),
+            clippy_count_delta: Some(3),
+        };
+        assert_eq!(compute_delta_net_score(&delta), -6);
+    }
+
+    #[test]
+    fn test_delta_net_score_zero() {
+        // tdg=0, coverage=None, clippy=None => net = 0
+        let delta = FileDeltaEntry {
+            tdg_grade_delta: 0,
+            coverage_pct_delta: None,
+            clippy_count_delta: None,
+        };
+        assert_eq!(compute_delta_net_score(&delta), 0);
+    }
+
+    #[test]
+    fn test_delta_net_score_cancels_out() {
+        // tdg=1, coverage=None, clippy=+1 => net = 1 + 0 - 1 = 0
+        let delta = FileDeltaEntry {
+            tdg_grade_delta: 1,
+            coverage_pct_delta: None,
+            clippy_count_delta: Some(1),
+        };
+        assert_eq!(compute_delta_net_score(&delta), 0);
+    }
 }
 
 #[cfg(test)]
