@@ -5,8 +5,16 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
+
+use regex::Regex;
 
 use crate::core::pmat_types::{CommitSummary, GsdPhaseReport, PhaseInfo, PhaseStatus};
+
+/// Compiled once — matches commit scopes like (02), (02-01), (03.1), (4).
+static SCOPE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\((\d+)(?:[.\-](\d+))?\)").expect("valid regex")
+});
 
 // ── Public API ───────────────────────────────────────────────────────────
 
@@ -197,7 +205,6 @@ fn make_relative_to_scan_root(path: &str, scan_root: &str) -> String {
 /// Caps the walk at 2000 commits.
 fn detect_phase_commit_ranges(scan_root: &str, phases: &mut Vec<PhaseInfo>) {
     use git2::{Repository, Sort};
-    use regex::Regex;
 
     let repo = match Repository::discover(scan_root) {
         Ok(r) => r,
@@ -221,8 +228,7 @@ fn detect_phase_commit_ranges(scan_root: &str, phases: &mut Vec<PhaseInfo>) {
         .map(|(i, p)| (p.number.clone(), i))
         .collect();
 
-    // Regex: matches commit scope like (02), (02-01), (03.1), (4)
-    let scope_re = Regex::new(r"\((\d+)(?:[.\-](\d+))?\)").expect("valid regex");
+    let scope_re = &*SCOPE_RE;
 
     // phase_idx → (first_oid, last_oid)
     let mut ranges: HashMap<usize, (String, String)> = HashMap::new();
@@ -273,7 +279,6 @@ fn detect_phase_commit_ranges(scan_root: &str, phases: &mut Vec<PhaseInfo>) {
 /// epoch ascending (oldest first) for display in the timeline navigator.
 fn collect_commit_summaries(scan_root: &str, phases: &[PhaseInfo]) -> Vec<CommitSummary> {
     use git2::{Repository, Sort};
-    use regex::Regex;
 
     let repo = match Repository::discover(scan_root) {
         Ok(r) => r,
@@ -325,7 +330,7 @@ fn collect_commit_summaries(scan_root: &str, phases: &[PhaseInfo]) -> Vec<Commit
         let author = commit.author().name().unwrap_or("").to_string();
         let epoch = commit.time().seconds();
         let sha = oid.to_string();
-        let short_sha = sha.chars().take(7).collect::<String>();
+        let short_sha = sha[..7.min(sha.len())].to_string();
 
         // Determine file count via diff against first parent
         let file_count = {

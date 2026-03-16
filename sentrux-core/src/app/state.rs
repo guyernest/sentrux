@@ -9,7 +9,7 @@ use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::layout::types::ColorMode;
-use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport, TimelineDeltaReport, CommitSummary, MilestoneInfo, TimelineSelection};
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport, TimelineDeltaReport, MilestoneInfo, TimelineSelection};
 use crate::metrics::evo::git_walker::DiffWindow;
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
@@ -177,8 +177,6 @@ pub struct AppState {
     /// Flag set by toolbar/auto-trigger when GSD phase parse is requested.
     /// The app handles spawning the background thread in draw_panels.rs.
     pub gsd_phase_requested: bool,
-    /// Selected phase index for navigator highlight (Plan 03) — persists across scans
-    pub selected_phase_idx: Option<usize>,
     /// Active diff window selection for git diff overlay
     pub git_diff_window: DiffWindow,
     /// Flag set by toolbar when "Run Git Diff" is requested.
@@ -206,8 +204,6 @@ pub struct AppState {
     pub delta_requested: bool,
 
     // ── Timeline navigator data ──
-    /// Commit summaries for timeline bar — populated when GsdPhaseReady arrives
-    pub commit_summaries: Vec<CommitSummary>,
     /// Milestone groupings — populated when GsdPhaseReady arrives
     pub milestone_infos: Vec<MilestoneInfo>,
     /// User's current timeline selection (milestone / phase / commit)
@@ -330,7 +326,6 @@ impl AppState {
             gsd_phase_report: None,
             gsd_phase_running: false,
             gsd_phase_requested: false,
-            selected_phase_idx: None,
             git_diff_window: DiffWindow::default(),
             git_diff_requested: false,
             git_diff_custom_n: 10,
@@ -342,7 +337,6 @@ impl AppState {
             timeline_delta_report: None,
             delta_running: false,
             delta_requested: false,
-            commit_summaries: Vec::new(),
             milestone_infos: Vec::new(),
             timeline_selection: None,
             folder_picker_requested: false,

@@ -454,11 +454,11 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
         return;
     }
 
-    // Clone data from state to release borrows before mut operations
-    let report = state.gsd_phase_report.as_ref().unwrap().clone();
-    let commits = state.commit_summaries.clone();
-    let milestones = state.milestone_infos.clone();
-    let current_selection = state.timeline_selection.clone();
+    // Take references to avoid per-frame cloning. Mutations collected in locals, applied at end.
+    let report = state.gsd_phase_report.as_ref().unwrap();
+    let commits = &report.commits;
+    let milestones = &state.milestone_infos;
+    let current_selection = &state.timeline_selection;
 
     let total_width = ui.available_width();
 
@@ -656,15 +656,14 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
                 let seg_id = ui.id().with(("phase_seg", phase_idx));
                 let resp = ui.interact(seg_rect, seg_id, egui::Sense::click());
 
-                let epoch_start = commits.iter()
-                    .find(|c| c.phase_idx == Some(phase_idx))
-                    .map(|c| c.epoch)
-                    .unwrap_or(0);
-
                 if resp.clicked() {
                     if is_selected {
                         new_selection = Some(None); // deselect on re-click
                     } else {
+                        let epoch_start = commits.iter()
+                            .find(|c| c.phase_idx == Some(phase_idx))
+                            .map(|c| c.epoch)
+                            .unwrap_or(0);
                         new_selection = Some(Some(TimelineSelection {
                             kind: TimelineSelectionKind::Phase,
                             index: phase_idx,
@@ -765,28 +764,16 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
                     }
                 }
 
-                // Epoch as readable string for tooltip
-                let days_since_epoch = commit.epoch / 86400;
-                let z = days_since_epoch + 719_468;
-                let era = if z >= 0 { z } else { z - 146096 } / 146097;
-                let doe = z - era * 146097;
-                let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-                let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-                let mp = (5 * doy + 2) / 153;
-                let d = doy - (153 * mp + 2) / 5 + 1;
-                let m = if mp < 10 { mp + 3 } else { mp - 9 };
-                let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
-                let secs_in_day = commit.epoch.rem_euclid(86400);
-                let hh = secs_in_day / 3600;
-                let mm = (secs_in_day % 3600) / 60;
-
-                let tooltip = format!(
-                    "{}\nAuthor: {}\nDate: {}-{:02}-{:02} {:02}:{:02}\nFiles: {}",
-                    commit.message, commit.author,
-                    y, m, d, hh, mm,
-                    commit.file_count,
-                );
-                resp.on_hover_text(egui::RichText::new(tooltip).monospace().size(10.0));
+                resp.on_hover_ui(|ui| {
+                    let (y, m, d, hh, mm) = crate::core::time_utils::epoch_to_civil(commit.epoch);
+                    let tooltip = format!(
+                        "{}\nAuthor: {}\nDate: {}-{:02}-{:02} {:02}:{:02}\nFiles: {}",
+                        commit.message, commit.author,
+                        y, m, d, hh, mm,
+                        commit.file_count,
+                    );
+                    ui.label(egui::RichText::new(tooltip).monospace().size(10.0));
+                });
             }
 
             // Overflow segment
@@ -811,34 +798,22 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
         }
     }
 
-    // ── Reset button ─────────────────────────────────────────────────────
+    // ── Pre-compute SHA for mutation (while borrows are still active) ────
 
-    draw_timeline_reset_button(ui, state);
-
-    // ── Apply mutations ───────────────────────────────────────────────────
-
-    if let Some(new_sel) = new_selection {
-        let changed = new_sel != current_selection;
-        state.timeline_selection = new_sel.clone();
-        if changed {
-            state.delta_requested = true;
-            // Also re-trigger git diff for the selected range so the treemap re-colors
-            match &new_sel {
+    let pending_sha: Option<Option<String>> = if let Some(ref new_sel) = new_selection {
+        if *new_sel != *current_selection {
+            match new_sel {
                 Some(sel) => {
-                    // Build a git diff range based on selection kind
                     let sha_opt: Option<String> = match sel.kind {
                         crate::core::pmat_types::TimelineSelectionKind::Commit => {
-                            // Find the commit's SHA
                             commits.get(sel.index).map(|c| c.sha.clone())
                         }
                         crate::core::pmat_types::TimelineSelectionKind::Phase => {
-                            // Use first commit of the phase as range start
                             commits.iter()
                                 .find(|c| c.phase_idx == Some(sel.index))
                                 .map(|c| c.sha.clone())
                         }
                         crate::core::pmat_types::TimelineSelectionKind::Milestone => {
-                            // Use earliest commit in milestone's phases
                             let phase_indices: Vec<usize> = milestones.get(sel.index)
                                 .map(|ms| ms.phase_indices.clone())
                                 .unwrap_or_default();
@@ -847,16 +822,39 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
                                 .map(|c| c.sha.clone())
                         }
                     };
-                    if let Some(from_sha) = sha_opt {
-                        state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::CommitRange {
-                            from: from_sha,
-                            to: "HEAD".to_string(),
-                        };
-                        state.git_diff_requested = true;
-                    }
+                    Some(sha_opt)
+                }
+                None => Some(None), // selection cleared
+            }
+        } else {
+            None // no change
+        }
+    } else {
+        None
+    };
+
+    // Release immutable borrows before mutable operations
+    let _ = (report, commits, milestones, current_selection);
+
+    // ── Reset button ─────────────────────────────────────────────────────
+
+    draw_timeline_reset_button(ui, state);
+
+    // ── Apply mutations ───────────────────────────────────────────────────
+
+    if let Some(new_sel) = new_selection {
+        state.timeline_selection = new_sel;
+        if let Some(sha_opt) = pending_sha {
+            state.delta_requested = true;
+            match sha_opt {
+                Some(from_sha) => {
+                    state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::CommitRange {
+                        from: from_sha,
+                        to: "HEAD".to_string(),
+                    };
+                    state.git_diff_requested = true;
                 }
                 None => {
-                    // Selection cleared — restore default window and re-trigger diff
                     state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::default();
                     state.git_diff_requested = true;
                 }
@@ -947,28 +945,11 @@ fn format_epoch_short(epoch: i64, span_secs: i64) -> String {
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
 
-    // Compute date components from epoch (UTC)
-    // Days since Unix epoch
-    let days_since_epoch = epoch / 86400;
-    let secs_in_day = epoch.rem_euclid(86400);
-    let hour = secs_in_day / 3600;
-    let min = (secs_in_day % 3600) / 60;
+    let (y, m, d, hh, mm) = crate::core::time_utils::epoch_to_civil(epoch);
 
     if span_secs < 86400 {
-        // Show HH:MM
-        return format!("{:02}:{:02}", hour, min);
+        return format!("{:02}:{:02}", hh, mm);
     }
-
-    // Compute year/month/day using civil date algorithm (Gregorian proleptic)
-    let z = days_since_epoch + 719_468;
-    let era = if z >= 0 { z } else { z - 146096 } / 146097;
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
 
     let month_name = MONTH_NAMES[((m - 1) as usize).min(11)];
 

@@ -180,10 +180,9 @@ fn aggregate_dir_delta(
         return None;
     }
 
-    let count = children.len() as i32;
     let tdg_sum: i32 = children.iter().map(|d| d.tdg_grade_delta).sum();
-    // Average TDG grade delta
-    let avg_tdg = tdg_sum / count;
+    // Use signum instead of integer division to avoid truncating small improvements
+    let avg_tdg = tdg_sum.signum();
 
     let cov_total: Option<f64> = {
         let cov_entries: Vec<f64> = children.iter()

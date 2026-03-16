@@ -412,21 +412,9 @@ fn draw_delta_section(ui: &mut Ui, state: &AppState, selected_path: &str) {
     });
 }
 
-/// Format a Unix epoch as a short date string (YYYY-MM-DD) without chrono.
+/// Format a Unix epoch as a short date string (YYYY-MM-DD).
 fn format_epoch_date(epoch: i64) -> String {
-    // Days since Unix epoch (1970-01-01)
-    let days = epoch / 86400;
-    // Gregorian calendar computation
-    let z = days + 719468;
-    let era = if z >= 0 { z } else { z - 146096 } / 146097;
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
+    let (y, m, d, _, _) = crate::core::time_utils::epoch_to_civil(epoch);
     format!("{:04}-{:02}-{:02}", y, m, d)
 }
 
