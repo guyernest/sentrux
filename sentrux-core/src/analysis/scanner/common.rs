@@ -62,6 +62,7 @@ const IGNORED_DIRS: &[&str] = &[
     "venv",
     ".venv",
     ".claude",
+    ".sentrux",
     ".cognitive",
     ".beemem",
     "site-packages",
