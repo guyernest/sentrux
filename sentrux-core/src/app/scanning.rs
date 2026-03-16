@@ -102,8 +102,11 @@ impl SentruxApp {
                     self.state.gsd_phase_running = false;
                     ctx.request_repaint();
                 }
-                ScanMsg::SnapshotStored(_path) => {
+                ScanMsg::SnapshotStored(path) => {
                     self.state.snapshot_write_running = false;
+                    if !path.is_empty() {
+                        eprintln!("[snapshot] stored: {}", path);
+                    }
                     ctx.request_repaint();
                 }
                 ScanMsg::DeltaReady(report) => {
@@ -165,6 +168,8 @@ impl SentruxApp {
         self.state.community_highlight = None;
         self.state.snapshot = Some(snap);
         self.state.scanning = false;
+        // Trigger snapshot write on next frame via the established flag pattern
+        self.state.snapshot_write_requested = true;
         self.state.rebuild_file_index();
         self.request_layout();
         if self.watcher_handle.is_none() || self.state.root_path != self.last_scanned_root {

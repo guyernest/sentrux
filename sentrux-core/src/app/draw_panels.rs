@@ -58,6 +58,18 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
         app.state.gsd_phase_requested = false;
         maybe_spawn_gsd_phase_thread(app);
     }
+
+    // Handle snapshot_write_requested flag — spawn background thread with channel access
+    if app.state.snapshot_write_requested {
+        app.state.snapshot_write_requested = false;
+        maybe_spawn_snapshot_writer_thread(app);
+    }
+
+    // Handle delta_requested flag — spawn background thread with channel access
+    if app.state.delta_requested {
+        app.state.delta_requested = false;
+        maybe_spawn_delta_thread(app);
+    }
 }
 
 /// Spawn a background coverage thread if conditions are met.
@@ -151,6 +163,97 @@ fn maybe_spawn_gsd_phase_thread(app: &mut SentruxApp) {
         Err(e) => {
             eprintln!("[app] failed to spawn gsd-phase thread: {}", e);
             app.state.gsd_phase_running = false;
+        }
+    }
+}
+
+/// Spawn a background snapshot writer thread if conditions are met.
+/// Sets snapshot_write_running=true and sends SnapshotStored via scan_msg_tx.
+/// Called when snapshot_write_requested flag is set (after scan completes).
+fn maybe_spawn_snapshot_writer_thread(app: &mut SentruxApp) {
+    if app.state.snapshot_write_running {
+        return;
+    }
+    let root = match app.state.root_path.clone() {
+        Some(r) => r,
+        None => return,
+    };
+    let pmat = app.state.pmat_report.clone();
+    let coverage = app.state.coverage_report.clone();
+    let clippy = app.state.clippy_report.clone();
+    app.state.snapshot_write_running = true;
+    let msg_tx = app.scan_msg_tx.clone();
+    match std::thread::Builder::new()
+        .name("snapshot-writer".into())
+        .spawn(move || {
+            let msg = match crate::analysis::snapshot_writer::write_analysis_snapshot(
+                &root, &pmat, &coverage, &clippy,
+            ) {
+                Ok(path) => crate::app::channels::ScanMsg::SnapshotStored(path),
+                Err(e) => {
+                    eprintln!("[snapshot] write error: {}", e);
+                    crate::app::channels::ScanMsg::SnapshotStored(String::new())
+                }
+            };
+            let _ = msg_tx.send(msg);
+        })
+    {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("[app] failed to spawn snapshot-writer thread: {}", e);
+            app.state.snapshot_write_running = false;
+        }
+    }
+}
+
+/// Spawn a background delta computation thread if conditions are met.
+/// Sets delta_running=true and sends DeltaReady/DeltaError via scan_msg_tx.
+/// Called when delta_requested flag is set (after timeline selection changes).
+fn maybe_spawn_delta_thread(app: &mut SentruxApp) {
+    if app.state.delta_running {
+        return;
+    }
+    let root = match app.state.root_path.clone() {
+        Some(r) => r,
+        None => return,
+    };
+    let selection = match app.state.timeline_selection.clone() {
+        Some(s) => s,
+        None => {
+            // No selection — clear any stale delta report
+            app.state.timeline_delta_report = None;
+            return;
+        }
+    };
+    let pmat = app.state.pmat_report.clone();
+    let coverage = app.state.coverage_report.clone();
+    let clippy = app.state.clippy_report.clone();
+    app.state.delta_running = true;
+    let msg_tx = app.scan_msg_tx.clone();
+    match std::thread::Builder::new()
+        .name("delta-compute".into())
+        .spawn(move || {
+            let baseline_opt =
+                crate::analysis::snapshot_writer::load_nearest_snapshot(&root, selection.epoch_start);
+            let report = match baseline_opt {
+                Some(baseline) => crate::analysis::snapshot_writer::compute_delta_report(
+                    &baseline, &pmat, &coverage, &clippy,
+                ),
+                None => {
+                    // No baseline snapshot — return empty report (no arrows, correct per RESEARCH.md pitfall 3)
+                    crate::core::pmat_types::TimelineDeltaReport {
+                        by_file: std::collections::HashMap::new(),
+                        baseline_epoch: selection.epoch_start,
+                    }
+                }
+            };
+            let _ = msg_tx.send(crate::app::channels::ScanMsg::DeltaReady(report));
+        })
+    {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("[app] failed to spawn delta-compute thread: {}", e);
+            app.state.delta_running = false;
         }
     }
 }
