@@ -67,7 +67,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **TLNV-01**: 3-tier hierarchical timeline navigator (time ticks / milestones / phases / commits) replaces the Phase 4 proportional phase bar
 - [ ] **TLNV-02**: Time ticks row with auto-scaling granularity (hours/days/weeks) and gap compression for idle periods
-- [ ] **TLNV-03**: Commit segments display short hash labels with hover tooltips showing full message, author, date, file count
+- [x] **TLNV-03**: Commit segments display short hash labels with hover tooltips showing full message, author, date, file count
 
 ### Timeline Filtering
 
@@ -77,12 +77,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Analysis Snapshots
 
-- [ ] **SNAP-01**: Analysis snapshots (per-file TDG grade, coverage %, clippy count) stored automatically on every scan completion to `.sentrux/snapshots/{timestamp}.json`
-- [ ] **SNAP-02**: Snapshot pruning keeps at most 50 files, deleting oldest when exceeded
+- [x] **SNAP-01**: Analysis snapshots (per-file TDG grade, coverage %, clippy count) stored automatically on every scan completion to `.sentrux/snapshots/{timestamp}.json`
+- [x] **SNAP-02**: Snapshot pruning keeps at most 50 files, deleting oldest when exceeded
 
 ### Diff-over-Time Analysis
 
-- [ ] **DLTA-01**: Delta computation comparing nearest baseline snapshot to current scan produces per-file metric changes
+- [x] **DLTA-01**: Delta computation comparing nearest baseline snapshot to current scan produces per-file metric changes
 - [ ] **DLTA-02**: Small arrow indicators on treemap file/directory nodes — green up arrow for improved, red down arrow for regressed
 - [ ] **DLTA-03**: File detail panel shows TDG grade change, coverage % change, and clippy count change when timeline filter is active
 
