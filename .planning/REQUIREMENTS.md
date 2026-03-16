@@ -83,8 +83,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Diff-over-Time Analysis
 
 - [x] **DLTA-01**: Delta computation comparing nearest baseline snapshot to current scan produces per-file metric changes
-- [ ] **DLTA-02**: Small arrow indicators on treemap file/directory nodes — green up arrow for improved, red down arrow for regressed
-- [ ] **DLTA-03**: File detail panel shows TDG grade change, coverage % change, and clippy count change when timeline filter is active
+- [x] **DLTA-02**: Small arrow indicators on treemap file/directory nodes — green up arrow for improved, red down arrow for regressed
+- [x] **DLTA-03**: File detail panel shows TDG grade change, coverage % change, and clippy count change when timeline filter is active
 
 ## v2 Requirements
 
