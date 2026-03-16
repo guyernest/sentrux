@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 05-improve-time-alignment-02-PLAN.md
-last_updated: "2026-03-16T00:33:21.605Z"
+stopped_at: Completed 05-improve-time-alignment-03-PLAN.md
+last_updated: "2026-03-16T00:38:32.343Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
   percent: 50
 ---
 
@@ -68,6 +68,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04-gsd-phase-overlay P03 | 30 | 2 tasks | 6 files |
 | Phase 05-improve-time-alignment P01 | 4 | 2 tasks | 8 files |
 | Phase 05-improve-time-alignment P02 | 7 | 2 tasks | 7 files |
+| Phase 05-improve-time-alignment P03 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,9 @@ Recent decisions affecting current work:
 - [Phase 05-improve-time-alignment]: Milestone bar hidden for milestones.len() <= 1: timeline is a navigation tool not a color overlay
 - [Phase 05-improve-time-alignment]: Timeline visible whenever gsd_phase_report is Some, regardless of color_mode
 - [Phase 05-improve-time-alignment]: collect_commit_summaries walks git2 revwalk in background thread (gsd_phase_adapter), result carried in GsdPhaseReport.commits
+- [Phase 05-improve-time-alignment]: snapshot_write_requested set in apply_scan_reports so both full scan and rescan trigger snapshot write
+- [Phase 05-improve-time-alignment]: Empty TimelineDeltaReport (no arrows) when no baseline snapshot: correct per RESEARCH.md pitfall 3
+- [Phase 05-improve-time-alignment]: DiffWindow::CommitRange{from: sha, to: HEAD} wired on selection change; reset restores DiffWindow::default()
 
 ### Pending Todos
 
@@ -142,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T00:33:21.603Z
-Stopped at: Completed 05-improve-time-alignment-02-PLAN.md
+Last session: 2026-03-16T00:38:32.341Z
+Stopped at: Completed 05-improve-time-alignment-03-PLAN.md
 Resume file: None

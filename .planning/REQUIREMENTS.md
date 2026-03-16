@@ -71,8 +71,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Timeline Filtering
 
-- [ ] **FILT-01**: Clicking a milestone/phase/commit filters the treemap to show changes from selected point to present
-- [ ] **FILT-02**: Reset mechanism: dedicated button and click-to-deselect (clicking already-selected segment clears filter)
+- [x] **FILT-01**: Clicking a milestone/phase/commit filters the treemap to show changes from selected point to present
+- [x] **FILT-02**: Reset mechanism: dedicated button and click-to-deselect (clicking already-selected segment clears filter)
 - [x] **FILT-03**: Hierarchical drill-down: clicking milestone filters phases, clicking phase filters commits
 
 ### Analysis Snapshots

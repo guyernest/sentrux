@@ -115,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
 | 3. Git Diff Overlay | 3/3 | Complete    | 2026-03-15 |
 | 4. GSD Phase Overlay | 2/3 | In Progress|  |
-| 5. Improve Time Alignment | 2/4 | In Progress|  |
+| 5. Improve Time Alignment | 3/4 | In Progress|  |
 
 ### Phase 5: Improve Time Alignment
 
@@ -128,7 +128,7 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
   3. Analysis snapshots are stored on every scan completion to .sentrux/snapshots/
   4. Files that improved since the selected time point show green up arrows; regressed files show red down arrows
   5. File detail panel shows exact TDG grade, coverage %, and clippy count changes when a time filter is active
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [ ] 05-01-PLAN.md — Data types, snapshot writer, delta computation, ScanMsg variants
