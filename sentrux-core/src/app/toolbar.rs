@@ -5,7 +5,6 @@
 
 use crate::layout::types::{ColorMode, EdgeFilter, FocusMode, LayoutMode, ScaleMode, SizeMode};
 use crate::core::settings::Theme;
-use crate::metrics::evo::git_walker::DiffWindow;
 use super::state::AppState;
 
 /// Draw the toolbar panel. Returns (layout_changed, visual_changed).
@@ -32,7 +31,6 @@ pub fn draw_toolbar(ui: &mut egui::Ui, state: &mut AppState) -> (bool, bool) {
 
         draw_visual_group(ui, state, &mut visual_changed);
 
-        draw_git_diff_controls(ui, state);
         draw_gsd_phase_controls(ui, state);
 
         ui.add_space(2.0);
@@ -236,49 +234,6 @@ fn draw_coverage_button(ui: &mut egui::Ui, state: &mut AppState) {
     }
     if !llvm_cov_available() {
         btn.on_disabled_hover_text("cargo-llvm-cov not installed — run: cargo install cargo-llvm-cov");
-    }
-}
-
-/// Git diff window selector row — only shown when ColorMode::GitDiff is active.
-///
-/// Renders preset buttons (15m/1h/1d/1w/tag/1c/5c) plus a custom commit count
-/// input. Clicking a preset or submitting the custom N sets git_diff_requested.
-pub fn draw_git_diff_controls(ui: &mut egui::Ui, state: &mut AppState) {
-    if state.color_mode != ColorMode::GitDiff {
-        return;
-    }
-    ui.separator();
-    ui.add_space(2.0);
-    ui.label(egui::RichText::new("Window:").small().weak());
-
-    for (window, label) in DiffWindow::preset_slice() {
-        let selected = state.git_diff_window == *window;
-        if ui.selectable_label(selected, *label).clicked() {
-            state.git_diff_window = window.clone();
-            state.git_diff_requested = true;
-        }
-    }
-
-    ui.add_space(4.0);
-    ui.label(egui::RichText::new("N:").small().weak());
-    let drag = egui::DragValue::new(&mut state.git_diff_custom_n)
-        .range(1..=999u32)
-        .speed(1.0);
-    let response = ui.add(drag);
-    let go_clicked = ui.button(egui::RichText::new("go").small()).clicked();
-    if go_clicked || (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))) {
-        state.git_diff_window = DiffWindow::CommitCount(state.git_diff_custom_n);
-        state.git_diff_requested = true;
-    }
-
-    if state.git_diff_running {
-        ui.add_space(4.0);
-        ui.label(
-            egui::RichText::new("computing...")
-                .small()
-                .weak()
-                .color(egui::Color32::from_rgb(120, 160, 200)),
-        );
     }
 }
 

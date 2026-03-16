@@ -63,6 +63,10 @@ impl SentruxApp {
                         self.state.coverage_report.as_ref(),
                         self.state.clippy_report.as_ref(),
                     );
+                    // Write a new snapshot now that coverage data is available.
+                    // The scan-completion snapshot was written with coverage: None;
+                    // this overwrites it with coverage data included.
+                    self.state.snapshot_write_requested = true;
                     ctx.request_repaint();
                 }
                 ScanMsg::CoverageError(msg) => {
@@ -154,7 +158,7 @@ impl SentruxApp {
         // Reset coverage on new scan — old coverage data is stale
         self.state.coverage_report = None;
         // Reset git diff on new scan — old diff data is stale
-        // Do NOT reset git_diff_window or git_diff_custom_n (user selections persist)
+        // Do NOT reset git_diff_window (user selections persist)
         self.state.git_diff_report = None;
         self.state.git_diff_running = false;
         // Recompute max risk normalization (after coverage reset — no stale data)
@@ -596,7 +600,7 @@ impl SentruxApp {
         self.state.coverage_report = None;
         self.state.coverage_running = false;
         // Reset git diff on new scan — old diff data is stale
-        // Do NOT reset git_diff_window or git_diff_custom_n (user selections persist)
+        // Do NOT reset git_diff_window (user selections persist)
         self.state.git_diff_report = None;
         self.state.git_diff_running = false;
         // Reset GSD phase on new scan — old phase data is stale for new directory

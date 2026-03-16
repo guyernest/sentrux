@@ -10,6 +10,7 @@ target/
 
 # Runtime data
 .sentrux/baseline.json
+.sentrux/snapshots/
 *.key
 
 # IDE

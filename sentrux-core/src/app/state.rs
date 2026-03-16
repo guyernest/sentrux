@@ -182,8 +182,6 @@ pub struct AppState {
     /// Flag set by toolbar when "Run Git Diff" is requested.
     /// The app handles spawning the background thread in draw_panels.rs.
     pub git_diff_requested: bool,
-    /// Custom commit count for DiffWindow::CommitCount — user input field
-    pub git_diff_custom_n: u32,
     /// Pre-computed max raw risk value for normalization — updated when reports change
     pub max_risk_raw: f64,
     /// Community BFS highlight — set of file paths in the selected node's community subgraph
@@ -330,7 +328,6 @@ impl AppState {
             gsd_phase_requested: false,
             git_diff_window: DiffWindow::default(),
             git_diff_requested: false,
-            git_diff_custom_n: 10,
             max_risk_raw: 1.0,
             community_highlight: None,
             impact_files: None,

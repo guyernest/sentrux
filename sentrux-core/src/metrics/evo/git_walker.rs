@@ -40,24 +40,6 @@ impl Default for DiffWindow {
     }
 }
 
-impl DiffWindow {
-    /// Preset time windows for the toolbar picker.
-    /// Each entry is (variant, short label).
-    /// Returns a static slice via OnceLock. DiffWindow is not Copy due to CommitRange.
-    pub fn preset_slice() -> &'static [(DiffWindow, &'static str)] {
-        use std::sync::OnceLock;
-        static PRESETS: OnceLock<Vec<(DiffWindow, &'static str)>> = OnceLock::new();
-        PRESETS.get_or_init(|| vec![
-            (DiffWindow::TimeSecs(900),    "15m"),
-            (DiffWindow::TimeSecs(3600),   "1h"),
-            (DiffWindow::TimeSecs(86400),  "1d"),
-            (DiffWindow::TimeSecs(604800), "1w"),
-            (DiffWindow::SinceLastTag,     "tag"),
-            (DiffWindow::CommitCount(1),   "1c"),
-            (DiffWindow::CommitCount(5),   "5c"),
-        ])
-    }
-}
 
 /// Result of `walk_git_log_windowed`: commit records + set of new file paths.
 pub struct DiffWalkResult {
@@ -538,60 +520,6 @@ mod tests {
     #[test]
     fn diff_window_default_is_one_day() {
         assert_eq!(DiffWindow::default(), DiffWindow::TimeSecs(86400));
-    }
-
-    #[test]
-    fn diff_window_presets_has_7_entries() {
-        assert_eq!(DiffWindow::preset_slice().len(), 7);
-    }
-
-    #[test]
-    fn diff_window_presets_contains_15m() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::TimeSecs(900)) && *label == "15m"
-        }), "PRESETS should contain 15m entry");
-    }
-
-    #[test]
-    fn diff_window_presets_contains_1h() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::TimeSecs(3600)) && *label == "1h"
-        }), "PRESETS should contain 1h entry");
-    }
-
-    #[test]
-    fn diff_window_presets_contains_1d() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::TimeSecs(86400)) && *label == "1d"
-        }), "PRESETS should contain 1d entry");
-    }
-
-    #[test]
-    fn diff_window_presets_contains_1w() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::TimeSecs(604800)) && *label == "1w"
-        }), "PRESETS should contain 1w entry");
-    }
-
-    #[test]
-    fn diff_window_presets_contains_tag() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::SinceLastTag) && *label == "tag"
-        }), "PRESETS should contain tag entry");
-    }
-
-    #[test]
-    fn diff_window_presets_contains_1c() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::CommitCount(1)) && *label == "1c"
-        }), "PRESETS should contain 1c entry");
-    }
-
-    #[test]
-    fn diff_window_presets_contains_5c() {
-        assert!(DiffWindow::preset_slice().iter().any(|(w, label)| {
-            matches!(w, DiffWindow::CommitCount(5)) && *label == "5c"
-        }), "PRESETS should contain 5c entry");
     }
 
     #[test]
