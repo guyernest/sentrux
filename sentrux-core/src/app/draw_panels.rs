@@ -811,15 +811,86 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
         }
     }
 
+    // ── Reset button ─────────────────────────────────────────────────────
+
+    draw_timeline_reset_button(ui, state);
+
     // ── Apply mutations ───────────────────────────────────────────────────
 
     if let Some(new_sel) = new_selection {
         let changed = new_sel != current_selection;
-        state.timeline_selection = new_sel;
+        state.timeline_selection = new_sel.clone();
         if changed {
             state.delta_requested = true;
+            // Also re-trigger git diff for the selected range so the treemap re-colors
+            match &new_sel {
+                Some(sel) => {
+                    // Build a git diff range based on selection kind
+                    let sha_opt: Option<String> = match sel.kind {
+                        crate::core::pmat_types::TimelineSelectionKind::Commit => {
+                            // Find the commit's SHA
+                            commits.get(sel.index).map(|c| c.sha.clone())
+                        }
+                        crate::core::pmat_types::TimelineSelectionKind::Phase => {
+                            // Use first commit of the phase as range start
+                            commits.iter()
+                                .find(|c| c.phase_idx == Some(sel.index))
+                                .map(|c| c.sha.clone())
+                        }
+                        crate::core::pmat_types::TimelineSelectionKind::Milestone => {
+                            // Use earliest commit in milestone's phases
+                            let phase_indices: Vec<usize> = milestones.get(sel.index)
+                                .map(|ms| ms.phase_indices.clone())
+                                .unwrap_or_default();
+                            commits.iter()
+                                .find(|c| c.phase_idx.map(|pi| phase_indices.contains(&pi)).unwrap_or(false))
+                                .map(|c| c.sha.clone())
+                        }
+                    };
+                    if let Some(from_sha) = sha_opt {
+                        state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::CommitRange {
+                            from: from_sha,
+                            to: "HEAD".to_string(),
+                        };
+                        state.git_diff_requested = true;
+                    }
+                }
+                None => {
+                    // Selection cleared — restore default window and re-trigger diff
+                    state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::default();
+                    state.git_diff_requested = true;
+                }
+            }
         }
     }
+}
+
+/// Draw a reset button that clears the timeline selection when one is active.
+///
+/// Only visible when `state.timeline_selection.is_some()`. On click: clears
+/// selection, delta report, and delta_requested flag.
+pub(crate) fn draw_timeline_reset_button(ui: &mut egui::Ui, state: &mut crate::app::state::AppState) {
+    if state.timeline_selection.is_none() {
+        return;
+    }
+    ui.horizontal(|ui| {
+        ui.add_space(4.0);
+        let btn = egui::Button::new(
+            egui::RichText::new("x  Reset filter")
+                .small()
+                .color(egui::Color32::from_rgb(220, 180, 80)),
+        )
+        .small()
+        .fill(egui::Color32::from_rgba_unmultiplied(60, 50, 30, 200));
+        if ui.add(btn).on_hover_text("Clear timeline selection").clicked() {
+            state.timeline_selection = None;
+            state.timeline_delta_report = None;
+            state.delta_requested = false;
+            // Restore default git diff window on reset
+            state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::default();
+            state.git_diff_requested = true;
+        }
+    });
 }
 
 // ── Timeline navigator helpers ──────────────────────────────────────────────
@@ -910,6 +981,57 @@ fn format_epoch_short(epoch: i64, span_secs: i64) -> String {
     }
 }
 
+// ── Pipeline state transition helpers (testable) ────────────────────────────
+
+/// Snapshot pipeline guard: returns true if a snapshot write should be started.
+/// Clears `requested`, sets `running`. Caller spawns the thread if returned true.
+///
+/// Returns false (and does not set running) when already running or no root.
+#[allow(dead_code)]
+fn snapshot_pipeline_should_start(
+    snapshot_write_requested: &mut bool,
+    snapshot_write_running: &mut bool,
+    has_root: bool,
+) -> bool {
+    if !*snapshot_write_requested {
+        return false;
+    }
+    *snapshot_write_requested = false;
+    if *snapshot_write_running || !has_root {
+        return false;
+    }
+    *snapshot_write_running = true;
+    true
+}
+
+/// Delta pipeline guard: returns true if a delta compute should be started.
+/// Clears `requested`, sets `running`. Caller spawns the thread if returned true.
+/// When selection is None, clears `delta_report` and returns false (correct behavior).
+///
+/// Returns false (and does not set running) when already running, no root, or no selection.
+#[allow(dead_code)]
+fn delta_pipeline_should_start(
+    delta_requested: &mut bool,
+    delta_running: &mut bool,
+    has_root: bool,
+    has_selection: bool,
+    delta_report_present: &mut bool,
+) -> bool {
+    if !*delta_requested {
+        return false;
+    }
+    *delta_requested = false;
+    if *delta_running || !has_root {
+        return false;
+    }
+    if !has_selection {
+        *delta_report_present = false;
+        return false;
+    }
+    *delta_running = true;
+    true
+}
+
 #[cfg(test)]
 mod timeline_tests {
     use super::*;
@@ -974,6 +1096,92 @@ mod timeline_tests {
         assert_eq!(segs.len(), 1);
         assert!((segs[0].left() - bar.left()).abs() < 0.5);
         assert!((segs[0].right() - bar.right()).abs() < 0.5);
+    }
+
+    // ── Pipeline state transition tests ─────────────────────────────────────
+
+    #[test]
+    fn test_snapshot_pipeline_state_transitions() {
+        // When requested=true and running=false: should start, transitions to running=true
+        let mut requested = true;
+        let mut running = false;
+        let should_start = snapshot_pipeline_should_start(&mut requested, &mut running, true);
+        assert!(should_start, "should start when requested=true, running=false");
+        assert!(!requested, "requested flag must be cleared");
+        assert!(running, "running flag must be set");
+
+        // Second call with running=true: same request is skipped (no double-spawn)
+        let mut requested2 = true;
+        let should_start2 = snapshot_pipeline_should_start(&mut requested2, &mut running, true);
+        assert!(!should_start2, "should NOT start when running=true");
+        assert!(!requested2, "requested flag cleared even when skipped");
+        assert!(running, "running stays true");
+    }
+
+    #[test]
+    fn test_snapshot_pipeline_not_requested() {
+        // When requested=false: no transition
+        let mut requested = false;
+        let mut running = false;
+        let should_start = snapshot_pipeline_should_start(&mut requested, &mut running, true);
+        assert!(!should_start, "should not start when not requested");
+        assert!(!running, "running stays false");
+    }
+
+    #[test]
+    fn test_delta_pipeline_no_selection() {
+        // When delta_requested=true but has_selection=false:
+        // delta_report is cleared, delta_running stays false
+        let mut delta_requested = true;
+        let mut delta_running = false;
+        let mut delta_report_present = true; // was Some(...)
+        let should_start = delta_pipeline_should_start(
+            &mut delta_requested,
+            &mut delta_running,
+            true, // has_root
+            false, // has_selection = None
+            &mut delta_report_present,
+        );
+        assert!(!should_start, "should NOT start without a selection");
+        assert!(!delta_requested, "requested cleared");
+        assert!(!delta_running, "running stays false when no selection");
+        assert!(!delta_report_present, "delta_report cleared when no selection");
+    }
+
+    #[test]
+    fn test_delta_pipeline_with_selection() {
+        // When delta_requested=true and has_selection=true: transitions to running=true
+        let mut delta_requested = true;
+        let mut delta_running = false;
+        let mut delta_report_present = false;
+        let should_start = delta_pipeline_should_start(
+            &mut delta_requested,
+            &mut delta_running,
+            true,
+            true, // has_selection
+            &mut delta_report_present,
+        );
+        assert!(should_start, "should start with selection");
+        assert!(!delta_requested, "requested cleared");
+        assert!(delta_running, "running set to true");
+    }
+
+    #[test]
+    fn test_delta_pipeline_already_running() {
+        // When delta_running=true: new request is skipped
+        let mut delta_requested = true;
+        let mut delta_running = true;
+        let mut delta_report_present = false;
+        let should_start = delta_pipeline_should_start(
+            &mut delta_requested,
+            &mut delta_running,
+            true,
+            true,
+            &mut delta_report_present,
+        );
+        assert!(!should_start, "should NOT start when already running");
+        assert!(!delta_requested, "requested cleared even when skipped");
+        assert!(delta_running, "running stays true");
     }
 }
 
