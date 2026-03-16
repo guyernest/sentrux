@@ -106,7 +106,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -115,13 +115,23 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4
 | 2.1 Rust Deep Analysis | 0/3 | Planning complete | - |
 | 3. Git Diff Overlay | 3/3 | Complete    | 2026-03-15 |
 | 4. GSD Phase Overlay | 2/3 | In Progress|  |
+| 5. Improve Time Alignment | 0/4 | Planning complete | - |
 
 ### Phase 5: Improve Time Alignment
 
 **Goal:** Align three temporal streams (wall-clock time, git commits, GSD milestones/phases) into a hierarchical navigation bar — milestones → phases → commits — with time ticks above, click-to-zoom filtering, and diff-over-time analysis showing how file scores and metrics changed between any selected point and the present
-**Requirements**: TBD
+**Requirements**: TLNV-01, TLNV-02, TLNV-03, FILT-01, FILT-02, FILT-03, SNAP-01, SNAP-02, DLTA-01, DLTA-02, DLTA-03
 **Depends on:** Phase 4
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. A 3-tier timeline navigator (time ticks / phases / commits) replaces the Phase 4 proportional phase bar
+  2. Clicking a phase/milestone/commit filters the treemap to show changes from that point to present
+  3. Analysis snapshots are stored on every scan completion to .sentrux/snapshots/
+  4. Files that improved since the selected time point show green up arrows; regressed files show red down arrows
+  5. File detail panel shows exact TDG grade, coverage %, and clippy count changes when a time filter is active
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 5 to break down)
+- [ ] 05-01-PLAN.md — Data types, snapshot writer, delta computation, ScanMsg variants
+- [ ] 05-02-PLAN.md — Timeline navigator widget replacing proportional phase bar
+- [ ] 05-03-PLAN.md — Click-to-zoom filtering, snapshot pipeline wiring, reset button
+- [ ] 05-04-PLAN.md — Delta arrow overlay on treemap nodes and detail panel delta section
