@@ -461,33 +461,56 @@ fn draw_delta_arrow(
     let green = egui::Color32::from_rgb(80, 200, 80);
     let red = egui::Color32::from_rgb(220, 60, 60);
     let font = egui::FontId::monospace(8.0);
-    let anchor = rect.right_top();
-    let max_y = rect.bottom() - 10.0;
-    let mut y = 2.0;
 
-    // TDG: ▲ = improved (grade went up), ▼ = regressed
+    // Build a compact inline string: "▲2% ▼3w" — all indicators side by side
+    let mut parts: [(&str, egui::Color32); 3] = [("", green); 3];
+    let mut buf_cov = String::new();
+    let mut buf_clip = String::new();
+    let mut count = 0;
+
     if has_tdg {
         let (label, clr) = if delta.tdg_grade_delta > 0 { ("▲TDG", green) } else { ("▼TDG", red) };
-        painter.text(anchor + egui::vec2(-2.0, y), egui::Align2::RIGHT_TOP, label, font.clone(), clr);
-        y += 10.0;
+        parts[count] = (label, clr);
+        count += 1;
     }
 
-    // Coverage: ▲ = more coverage (improved), ▼ = less
-    if has_cov && anchor.y + y <= max_y {
+    if has_cov {
         let cov = delta.coverage_pct_delta.unwrap();
         let (sym, clr) = if cov > 0.0 { ("▲", green) } else { ("▼", red) };
-        let label = format!("{sym}{:.0}%", cov.abs());
-        painter.text(anchor + egui::vec2(-2.0, y), egui::Align2::RIGHT_TOP, &label, font.clone(), clr);
-        y += 10.0;
+        buf_cov = format!("{sym}{:.0}%", cov.abs());
+        parts[count] = (&buf_cov, clr);
+        count += 1;
     }
 
-    // Clippy: ▲ = fewer warnings (improved), ▼ = more warnings (regressed)
-    if has_clip && anchor.y + y <= max_y {
+    if has_clip {
         let clip = delta.clippy_count_delta.unwrap();
-        // Fewer warnings (clip < 0) = improvement = ▲ green
         let (sym, clr) = if clip < 0 { ("▲", green) } else { ("▼", red) };
-        let label = format!("{sym}{}w", clip.abs());
-        painter.text(anchor + egui::vec2(-2.0, y), egui::Align2::RIGHT_TOP, &label, font, clr);
+        buf_clip = format!("{sym}{}w", clip.abs());
+        parts[count] = (&buf_clip, clr);
+        count += 1;
+    }
+
+    // Draw indicators side by side from the right edge, separated by small gaps
+    // Approximate character width for monospace 8pt ≈ 5px
+    let char_w = 5.0_f32;
+    let gap = 3.0_f32;
+    let mut x_offset = -2.0_f32; // start from right edge inward
+
+    for i in (0..count).rev() {
+        let (text, color) = parts[i];
+        let text_w = text.chars().count() as f32 * char_w;
+        // Don't overflow left edge of rect
+        if rect.right() + x_offset - text_w < rect.left() + 4.0 {
+            break;
+        }
+        painter.text(
+            rect.right_top() + egui::vec2(x_offset, 2.0),
+            egui::Align2::RIGHT_TOP,
+            text,
+            font.clone(),
+            color,
+        );
+        x_offset -= text_w + gap;
     }
 }
 
