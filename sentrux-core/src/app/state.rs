@@ -439,3 +439,225 @@ impl AppState {
         self.languages.sort_unstable();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::types::FileNode;
+    use crate::core::snapshot::Snapshot;
+
+    fn make_file(path: &str, lang: &str) -> FileNode {
+        FileNode {
+            path: path.to_string(),
+            name: path.rsplit('/').next().unwrap_or(path).to_string(),
+            is_dir: false, lines: 10, logic: 8, comments: 1, blanks: 1,
+            funcs: 2, mtime: 100.0, gs: "M".to_string(), lang: lang.to_string(),
+            sa: None, children: None,
+        }
+    }
+
+    fn make_dir(path: &str, children: Vec<FileNode>) -> FileNode {
+        FileNode {
+            path: path.to_string(),
+            name: path.rsplit('/').next().unwrap_or(path).to_string(),
+            is_dir: true, lines: 0, logic: 0, comments: 0, blanks: 0,
+            funcs: 0, mtime: 0.0, gs: String::new(), lang: String::new(),
+            sa: None, children: Some(children),
+        }
+    }
+
+    fn make_snapshot(files: Vec<FileNode>) -> Snapshot {
+        let root = make_dir("root", files);
+        Snapshot {
+            root: Arc::new(root),
+            total_files: 0, total_lines: 0, total_dirs: 0,
+            call_graph: vec![], import_graph: vec![],
+            inherit_graph: vec![], entry_points: vec![],
+            exec_depth: HashMap::new(),
+        }
+    }
+
+    // ── AppState::new ────────────────────────────────────────────────────
+
+    #[test]
+    fn new_state_has_sensible_defaults() {
+        let state = AppState::new();
+        assert!(state.root_path.is_none());
+        assert!(!state.scanning);
+        assert!(state.snapshot.is_none());
+        assert_eq!(state.color_mode, ColorMode::TdgGrade);
+        assert_eq!(state.theme, Theme::Calm);
+        assert!(state.file_index.is_empty());
+        assert!(state.recent_activity.is_empty());
+        assert!(!state.snapshot_write_running);
+        assert!(!state.delta_requested);
+        assert!(state.timeline_selection.is_none());
+        assert!(state.pre_timeline_color_mode.is_none());
+    }
+
+    // ── record_activity ──────────────────────────────────────────────────
+
+    #[test]
+    fn record_activity_inserts_at_front() {
+        let mut state = AppState::new();
+        state.record_activity("src/a.rs".into(), "create".into());
+        state.record_activity("src/b.rs".into(), "modify".into());
+        assert_eq!(state.recent_activity.len(), 2);
+        assert_eq!(state.recent_activity[0].path, "src/b.rs", "newest should be first");
+        assert_eq!(state.recent_activity[1].path, "src/a.rs");
+    }
+
+    #[test]
+    fn record_activity_deduplicates() {
+        let mut state = AppState::new();
+        state.record_activity("src/a.rs".into(), "create".into());
+        state.record_activity("src/b.rs".into(), "modify".into());
+        state.record_activity("src/a.rs".into(), "modify".into());
+        assert_eq!(state.recent_activity.len(), 2, "duplicate should be deduplicated");
+        assert_eq!(state.recent_activity[0].path, "src/a.rs", "re-added entry should be newest");
+        assert_eq!(state.recent_activity[0].kind, "modify", "kind should be updated");
+    }
+
+    #[test]
+    fn record_activity_caps_at_50() {
+        let mut state = AppState::new();
+        for i in 0..60 {
+            state.record_activity(format!("file_{i}.rs"), "create".into());
+        }
+        assert_eq!(state.recent_activity.len(), 50);
+        assert_eq!(state.recent_activity[0].path, "file_59.rs", "newest should be first");
+    }
+
+    // ── is_hidden ────────────────────────────────────────────────────────
+
+    #[test]
+    fn is_hidden_exact_match() {
+        let mut state = AppState::new();
+        state.hidden_paths = Arc::new(["src/secret.rs".to_string()].into_iter().collect());
+        assert!(state.is_hidden("src/secret.rs"));
+        assert!(!state.is_hidden("src/public.rs"));
+    }
+
+    #[test]
+    fn is_hidden_directory_prefix() {
+        let mut state = AppState::new();
+        state.hidden_paths = Arc::new(["vendor".to_string()].into_iter().collect());
+        assert!(state.is_hidden("vendor/lib.rs"), "files under hidden dir should be hidden");
+        assert!(state.is_hidden("vendor/sub/deep.rs"), "nested files too");
+        assert!(!state.is_hidden("vendor_extra/lib.rs"), "partial prefix match should NOT hide");
+    }
+
+    #[test]
+    fn is_hidden_empty_set() {
+        let state = AppState::new();
+        assert!(!state.is_hidden("anything.rs"));
+    }
+
+    // ── set_theme ────────────────────────────────────────────────────────
+
+    #[test]
+    fn set_theme_updates_config() {
+        let mut state = AppState::new();
+        assert_eq!(state.theme, Theme::Calm);
+        state.set_theme(Theme::Solarized);
+        assert_eq!(state.theme, Theme::Solarized);
+        // theme_config should also be updated (different background color)
+        let calm_config = ThemeConfig::from_theme(Theme::Calm);
+        assert_ne!(state.theme_config.canvas_bg, calm_config.canvas_bg,
+            "solarized should have different canvas bg than calm");
+    }
+
+    // ── file_to_index_entry ──────────────────────────────────────────────
+
+    #[test]
+    fn file_to_index_entry_captures_fields() {
+        let file = make_file("src/main.rs", "rust");
+        let entry = AppState::file_to_index_entry(&file);
+        assert_eq!(entry.lines, 10);
+        assert_eq!(entry.logic, 8);
+        assert_eq!(entry.funcs, 2);
+        assert_eq!(entry.lang, "rust");
+        assert_eq!(entry.gs, "M");
+        assert_eq!(entry.mtime, 100.0);
+        assert!(entry.stats_line.contains("10ln"), "stats_line should contain line count");
+        assert!(entry.stats_line.contains("2fn"), "stats_line should contain func count");
+    }
+
+    // ── rebuild_file_index ───────────────────────────────────────────────
+
+    #[test]
+    fn rebuild_file_index_populates_index() {
+        let mut state = AppState::new();
+        let snap = make_snapshot(vec![
+            make_file("src/main.rs", "rust"),
+            make_file("src/lib.rs", "rust"),
+            make_file("tests/test_a.rs", "rust"),
+        ]);
+        state.snapshot = Some(Arc::new(snap));
+        state.rebuild_file_index();
+
+        assert_eq!(state.file_index.len(), 3);
+        assert!(state.file_index.contains_key("src/main.rs"));
+        assert!(state.file_index.contains_key("tests/test_a.rs"));
+    }
+
+    #[test]
+    fn rebuild_file_index_extracts_top_dirs() {
+        let mut state = AppState::new();
+        let snap = make_snapshot(vec![
+            make_file("src/main.rs", "rust"),
+            make_file("src/lib.rs", "rust"),
+            make_file("tests/test_a.rs", "rust"),
+            make_file("benches/bench.rs", "rust"),
+        ]);
+        state.snapshot = Some(Arc::new(snap));
+        state.rebuild_file_index();
+
+        assert_eq!(state.top_dirs.len(), 3);
+        assert!(state.top_dirs.contains(&"src".to_string()));
+        assert!(state.top_dirs.contains(&"tests".to_string()));
+        assert!(state.top_dirs.contains(&"benches".to_string()));
+    }
+
+    #[test]
+    fn rebuild_file_index_extracts_languages() {
+        let mut state = AppState::new();
+        let snap = make_snapshot(vec![
+            make_file("src/main.rs", "rust"),
+            make_file("src/app.ts", "typescript"),
+            make_file("src/style.css", "unknown"), // should be excluded
+        ]);
+        state.snapshot = Some(Arc::new(snap));
+        state.rebuild_file_index();
+
+        assert_eq!(state.languages.len(), 2, "should exclude 'unknown'");
+        assert!(state.languages.contains(&"rust".to_string()));
+        assert!(state.languages.contains(&"typescript".to_string()));
+    }
+
+    #[test]
+    fn rebuild_file_index_no_snapshot_is_no_op() {
+        let mut state = AppState::new();
+        state.file_index.insert("stale".into(), AppState::file_to_index_entry(&make_file("stale", "rust")));
+        state.rebuild_file_index();
+        assert!(state.file_index.is_empty(), "should clear index when no snapshot");
+    }
+
+    #[test]
+    fn rebuild_file_index_clears_previous_data() {
+        let mut state = AppState::new();
+
+        // First snapshot
+        let snap1 = make_snapshot(vec![make_file("old/file.rs", "rust")]);
+        state.snapshot = Some(Arc::new(snap1));
+        state.rebuild_file_index();
+        assert!(state.file_index.contains_key("old/file.rs"));
+
+        // Second snapshot — old data should be gone
+        let snap2 = make_snapshot(vec![make_file("new/file.rs", "rust")]);
+        state.snapshot = Some(Arc::new(snap2));
+        state.rebuild_file_index();
+        assert!(!state.file_index.contains_key("old/file.rs"), "old index should be cleared");
+        assert!(state.file_index.contains_key("new/file.rs"));
+    }
+}

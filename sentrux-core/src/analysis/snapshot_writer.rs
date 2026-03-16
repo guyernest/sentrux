@@ -57,22 +57,27 @@ pub fn write_analysis_snapshot(
 
     let epoch = epoch_now();
 
-    // Build per-file entries from PMAT (primary source of file list)
+    // Build per-file entries from PMAT. PMAT may return absolute paths in by_path
+    // keys (e.g. "/Users/.../sentrux-core/src/main.rs"), while coverage and clippy
+    // use scan-root-relative paths (e.g. "sentrux-core/src/main.rs"). Normalize
+    // by stripping the root prefix.
+    let root_prefix = format!("{}/", root.trim_end_matches('/'));
     let mut files: Vec<FileAnalysisSnapshot> = Vec::new();
     if let Some(pmat) = pmat {
-        for file_score in &pmat.tdg.files {
-            let path = file_score.file_path.trim_start_matches("./").to_string();
+        for (raw_path, &idx) in &pmat.by_path {
+            let rel_path = normalize_pmat_path(raw_path, &root_prefix);
+            let grade = pmat.tdg.files[idx].grade.clone();
             let coverage_pct = coverage
                 .as_ref()
-                .and_then(|c| c.by_path.get(&path))
-                .map(|&idx| coverage.as_ref().unwrap().files[idx].summary.lines.percent);
+                .and_then(|c| c.by_path.get(rel_path))
+                .map(|&ci| coverage.as_ref().unwrap().files[ci].summary.lines.percent);
             let clippy_count = clippy
                 .as_ref()
-                .and_then(|c| c.by_file.get(&path))
+                .and_then(|c| c.by_file.get(rel_path))
                 .map(|d| d.total);
             files.push(FileAnalysisSnapshot {
-                path,
-                tdg_grade: Some(file_score.grade.clone()),
+                path: rel_path.to_string(),
+                tdg_grade: Some(grade),
                 coverage_pct,
                 clippy_count,
             });
@@ -109,6 +114,15 @@ pub fn write_analysis_snapshot(
     prune_snapshots_from_list(&mut snapshots, 50);
 
     Ok(path_str)
+}
+
+/// Normalize a PMAT path to scan-root-relative form.
+/// PMAT may return absolute paths or `./`-prefixed paths; strip the root prefix
+/// to match the relative keys used by coverage and clippy reports.
+fn normalize_pmat_path<'a>(raw: &'a str, root_prefix: &str) -> &'a str {
+    raw.strip_prefix(root_prefix)
+        .or_else(|| raw.strip_prefix("./"))
+        .unwrap_or(raw)
 }
 
 /// Get the SHA of the current git HEAD, or None if not in a git repo.
@@ -178,51 +192,49 @@ pub fn load_nearest_snapshot(root: &str, target_epoch: i64) -> Option<AnalysisSn
 ///
 /// Files only in baseline or only in current produce no entry (no comparison basis).
 pub fn compute_delta_report(
+    root: &str,
     baseline: &AnalysisSnapshot,
     pmat: &Option<PmatReport>,
     coverage: &Option<CoverageReport>,
     clippy: &Option<ClippyReport>,
 ) -> TimelineDeltaReport {
-    // Index baseline by path
+    // Index baseline by path (already relative from snapshot writer)
     let baseline_map: std::collections::HashMap<&str, &FileAnalysisSnapshot> = baseline
         .files
         .iter()
         .map(|f| (f.path.as_str(), f))
         .collect();
 
+    let root_prefix = format!("{}/", root.trim_end_matches('/'));
     let mut by_file: std::collections::HashMap<String, FileDeltaEntry> =
         std::collections::HashMap::new();
 
-    // Only compute deltas for files present in the current PMAT report
+    // PMAT by_path keys may be absolute — normalize to scan-root-relative
     if let Some(pmat) = pmat {
-        for file_score in &pmat.tdg.files {
-            let path = file_score.file_path.trim_start_matches("./");
+        for (raw_path, &idx) in &pmat.by_path {
+            let rel_path = normalize_pmat_path(raw_path, &root_prefix);
 
-            // Only produce an entry if the file was also in the baseline
-            let baseline_entry = match baseline_map.get(path) {
+            let baseline_entry = match baseline_map.get(rel_path) {
                 Some(e) => e,
                 None => continue,
             };
 
-            // TDG grade delta
             let old_grade = baseline_entry.tdg_grade.as_deref().unwrap_or("");
-            let new_grade = file_score.grade.as_str();
+            let new_grade = pmat.tdg.files[idx].grade.as_str();
             let tdg_grade_delta = grade_delta(old_grade, new_grade);
 
-            // Coverage delta
             let new_coverage = coverage
                 .as_ref()
-                .and_then(|c| c.by_path.get(path))
-                .map(|&idx| coverage.as_ref().unwrap().files[idx].summary.lines.percent);
+                .and_then(|c| c.by_path.get(rel_path))
+                .map(|&ci| coverage.as_ref().unwrap().files[ci].summary.lines.percent);
             let coverage_pct_delta = match (baseline_entry.coverage_pct, new_coverage) {
                 (Some(old), Some(new)) => Some(new - old),
                 _ => None,
             };
 
-            // Clippy count delta
             let new_clippy = clippy
                 .as_ref()
-                .and_then(|c| c.by_file.get(path))
+                .and_then(|c| c.by_file.get(rel_path))
                 .map(|d| d.total);
             let clippy_count_delta = match (baseline_entry.clippy_count, new_clippy) {
                 (Some(old), Some(new)) => Some(new as i32 - old as i32),
@@ -230,7 +242,7 @@ pub fn compute_delta_report(
             };
 
             by_file.insert(
-                path.to_string(),
+                rel_path.to_string(),
                 FileDeltaEntry {
                     tdg_grade_delta,
                     coverage_pct_delta,
@@ -455,7 +467,7 @@ mod tests {
         let baseline = make_snapshot_at(100, "src/main.rs", "C");
         let pmat = make_pmat_with_file("src/main.rs", "A");
 
-        let report = compute_delta_report(&baseline, &Some(pmat), &None, &None);
+        let report = compute_delta_report("/tmp/test", &baseline, &Some(pmat), &None, &None);
         let entry = report.by_file.get("src/main.rs")
             .expect("delta entry should exist for file in both baseline and current");
         assert_eq!(entry.tdg_grade_delta, 6, "C→A should be rank delta +6");
@@ -468,7 +480,7 @@ mod tests {
         let baseline = make_snapshot_at(100, "src/main.rs", "A");
         let pmat = make_pmat_with_file("src/main.rs", "C");
 
-        let report = compute_delta_report(&baseline, &Some(pmat), &None, &None);
+        let report = compute_delta_report("/tmp/test", &baseline, &Some(pmat), &None, &None);
         let entry = report.by_file.get("src/main.rs")
             .expect("delta entry should exist");
         assert_eq!(entry.tdg_grade_delta, -6, "A→C should be rank delta -6");
@@ -485,7 +497,7 @@ mod tests {
         };
         let pmat = make_pmat_with_file("src/new.rs", "B");
 
-        let report = compute_delta_report(&baseline, &Some(pmat), &None, &None);
+        let report = compute_delta_report("/tmp/test", &baseline, &Some(pmat), &None, &None);
         assert!(
             !report.by_file.contains_key("src/new.rs"),
             "new file not in baseline should not produce a delta entry"
@@ -495,8 +507,71 @@ mod tests {
     #[test]
     fn test_compute_delta_baseline_epoch_set() {
         let baseline = make_snapshot_at(12345, "src/lib.rs", "B");
-        let report = compute_delta_report(&baseline, &None, &None, &None);
+        let report = compute_delta_report("/tmp/test", &baseline, &None, &None, &None);
         assert_eq!(report.baseline_epoch, 12345);
+    }
+
+    #[test]
+    fn test_normalize_pmat_path_strips_root() {
+        assert_eq!(
+            normalize_pmat_path("/Users/guy/project/src/main.rs", "/Users/guy/project/"),
+            "src/main.rs"
+        );
+    }
+
+    #[test]
+    fn test_normalize_pmat_path_strips_dot_slash() {
+        assert_eq!(normalize_pmat_path("./src/main.rs", "/other/root/"), "src/main.rs");
+    }
+
+    #[test]
+    fn test_normalize_pmat_path_passthrough_relative() {
+        assert_eq!(normalize_pmat_path("src/main.rs", "/other/root/"), "src/main.rs");
+    }
+
+    #[test]
+    fn test_compute_delta_with_absolute_pmat_paths() {
+        // Simulate PMAT returning absolute paths — the common production case
+        let root = "/Users/guy/projects/sentrux/sentrux";
+        let abs_path = format!("{}/sentrux-core/src/main.rs", root);
+
+        // Build PMAT report with absolute path (as PMAT actually returns)
+        let file = PmatFileScore {
+            file_path: abs_path.clone(),
+            grade: "A".to_string(),
+            total: 80.0, structural_complexity: 80.0, semantic_complexity: 80.0,
+            duplication_ratio: 80.0, coupling_score: 80.0, doc_coverage: 80.0,
+            consistency_score: 80.0, entropy_score: 80.0, confidence: 0.9,
+            language: "rust".to_string(), critical_defects_count: 0,
+            has_critical_defects: false, penalties_applied: vec![],
+        };
+        let tdg = PmatTdgOutput {
+            files: vec![file],
+            average_score: 80.0, average_grade: "A".to_string(),
+            total_files: 1, language_distribution: HashMap::new(),
+        };
+        let pmat = PmatReport::from_tdg(tdg, None);
+
+        // Baseline snapshot uses relative path (as written by the fixed snapshot writer)
+        let baseline = AnalysisSnapshot {
+            computed_at: 100,
+            commit_sha: String::new(),
+            files: vec![FileAnalysisSnapshot {
+                path: "sentrux-core/src/main.rs".to_string(),
+                tdg_grade: Some("C".to_string()),
+                coverage_pct: Some(50.0),
+                clippy_count: Some(5),
+            }],
+        };
+
+        let report = compute_delta_report(root, &baseline, &Some(pmat), &None, &None);
+        assert!(
+            report.by_file.contains_key("sentrux-core/src/main.rs"),
+            "delta should match absolute PMAT path to relative baseline path after normalization; keys: {:?}",
+            report.by_file.keys().collect::<Vec<_>>()
+        );
+        let entry = &report.by_file["sentrux-core/src/main.rs"];
+        assert!(entry.tdg_grade_delta > 0, "C→A should be positive delta");
     }
 
     #[test]

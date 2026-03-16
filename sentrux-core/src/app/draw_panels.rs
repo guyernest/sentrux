@@ -237,7 +237,7 @@ fn maybe_spawn_delta_thread(app: &mut SentruxApp) {
                 crate::analysis::snapshot_writer::load_nearest_snapshot(&root, selection.epoch_start);
             let report = match baseline_opt {
                 Some(baseline) => crate::analysis::snapshot_writer::compute_delta_report(
-                    &baseline, &pmat, &coverage, &clippy,
+                    &root, &baseline, &pmat, &coverage, &clippy,
                 ),
                 None => {
                     // No baseline snapshot — return empty report (no arrows, correct per RESEARCH.md pitfall 3)
