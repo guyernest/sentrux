@@ -184,11 +184,13 @@ fn aggregate_dir_delta(
     // Use signum instead of integer division to avoid truncating small improvements
     let avg_tdg = tdg_sum.signum();
 
-    let cov_total: Option<f64> = {
+    let cov_avg: Option<f64> = {
         let cov_entries: Vec<f64> = children.iter()
             .filter_map(|d| d.coverage_pct_delta)
             .collect();
-        if cov_entries.is_empty() { None } else { Some(cov_entries.iter().sum()) }
+        if cov_entries.is_empty() { None } else {
+            Some(cov_entries.iter().sum::<f64>() / cov_entries.len() as f64)
+        }
     };
 
     let clippy_total: Option<i32> = {
@@ -200,7 +202,7 @@ fn aggregate_dir_delta(
 
     Some(FileDeltaEntry {
         tdg_grade_delta: avg_tdg,
-        coverage_pct_delta: cov_total,
+        coverage_pct_delta: cov_avg,
         clippy_count_delta: clippy_total,
     })
 }
