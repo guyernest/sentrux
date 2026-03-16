@@ -17,4 +17,5 @@ pub mod parser;
 pub mod pmat_adapter;
 pub mod resolver;
 pub mod scanner;
+pub mod snapshot_writer;
 
