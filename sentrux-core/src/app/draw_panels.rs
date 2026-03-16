@@ -691,17 +691,26 @@ pub(crate) fn draw_timeline_navigator(ui: &mut egui::Ui, state: &mut crate::app:
 
         // Filter commits based on selection
         let visible_commits: Vec<(usize, &crate::core::pmat_types::CommitSummary)> =
-            if let Some(TimelineSelection {
-                kind: TimelineSelectionKind::Phase,
-                index: selected_phase_idx,
-                ..
-            }) = &current_selection {
-                commits.iter()
-                    .enumerate()
-                    .filter(|(_, c)| c.phase_idx == Some(*selected_phase_idx))
-                    .collect()
-            } else {
-                commits.iter().enumerate().collect()
+            match &current_selection {
+                Some(TimelineSelection { kind: TimelineSelectionKind::Phase, index, .. }) => {
+                    // Phase selected: show only that phase's commits
+                    commits.iter().enumerate()
+                        .filter(|(_, c)| c.phase_idx == Some(*index))
+                        .collect()
+                }
+                Some(TimelineSelection { kind: TimelineSelectionKind::Commit, index, .. }) => {
+                    // Commit selected: keep showing the same phase's commits (if the commit has a phase),
+                    // otherwise show all commits. This prevents the bar from jumping to all 200 commits.
+                    let phase_of_commit = commits.get(*index).and_then(|c| c.phase_idx);
+                    if let Some(phase_idx) = phase_of_commit {
+                        commits.iter().enumerate()
+                            .filter(|(_, c)| c.phase_idx == Some(phase_idx))
+                            .collect()
+                    } else {
+                        commits.iter().enumerate().collect()
+                    }
+                }
+                _ => commits.iter().enumerate().collect(),
             };
 
         if !visible_commits.is_empty() {

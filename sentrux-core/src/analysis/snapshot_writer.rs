@@ -93,6 +93,9 @@ pub fn load_nearest_snapshot(root: &str, target_epoch: i64) -> Option<AnalysisSn
 
     let mut best_epoch: Option<i64> = None;
     let mut best_path: Option<PathBuf> = None;
+    // Track oldest snapshot as fallback when target_epoch predates all snapshots
+    let mut oldest_epoch: Option<i64> = None;
+    let mut oldest_path: Option<PathBuf> = None;
 
     for entry in entries.flatten() {
         let fname = entry.file_name();
@@ -100,6 +103,11 @@ pub fn load_nearest_snapshot(root: &str, target_epoch: i64) -> Option<AnalysisSn
         // Parse "{epoch}.json"
         if let Some(stem) = name.strip_suffix(".json") {
             if let Ok(ep) = stem.parse::<i64>() {
+                // Track oldest snapshot
+                if oldest_epoch.is_none() || ep < oldest_epoch.unwrap() {
+                    oldest_epoch = Some(ep);
+                    oldest_path = Some(entry.path());
+                }
                 if ep <= target_epoch {
                     if best_epoch.is_none() || ep > best_epoch.unwrap() {
                         best_epoch = Some(ep);
@@ -110,7 +118,9 @@ pub fn load_nearest_snapshot(root: &str, target_epoch: i64) -> Option<AnalysisSn
         }
     }
 
-    let path = best_path?;
+    // Use the closest snapshot predating target_epoch; if none exists, fall back
+    // to the oldest snapshot available (the earliest known state)
+    let path = best_path.or(oldest_path)?;
     let data = std::fs::read_to_string(&path).ok()?;
     serde_json::from_str(&data).ok()
 }
@@ -357,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_nearest_all_newer() {
+    fn test_load_nearest_all_newer_falls_back_to_oldest() {
         let tmp = temp_root();
         let root = tmp.path().to_string_lossy().to_string();
 
@@ -367,8 +377,10 @@ mod tests {
             write_snapshot_at_epoch(tmp.path(), ep, &snap);
         }
 
+        // Falls back to the oldest available snapshot (epoch 500)
         let result = load_nearest_snapshot(&root, 100);
-        assert!(result.is_none(), "all snapshots newer than target should return None");
+        assert!(result.is_some(), "should fall back to oldest snapshot when all are newer");
+        assert_eq!(result.unwrap().computed_at, 500);
     }
 
     #[test]
