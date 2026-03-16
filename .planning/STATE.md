@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 05-improve-time-alignment-01-PLAN.md
-last_updated: "2026-03-16T00:23:33.160Z"
+stopped_at: Completed 05-improve-time-alignment-02-PLAN.md
+last_updated: "2026-03-16T00:33:21.605Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
   percent: 50
 ---
 
@@ -67,6 +67,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04-gsd-phase-overlay P03 | 30 | 1 tasks | 4 files |
 | Phase 04-gsd-phase-overlay P03 | 30 | 2 tasks | 6 files |
 | Phase 05-improve-time-alignment P01 | 4 | 2 tasks | 8 files |
+| Phase 05-improve-time-alignment P02 | 7 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,9 @@ Recent decisions affecting current work:
 - [Phase 04-gsd-phase-overlay]: Status bar used as treemap hover tooltip surface for GsdPhase info via draw_left_info() extension
 - [Phase 05-improve-time-alignment]: grade_to_rank unknown returns -1; grade_delta returns 0 if either side is unknown to avoid spurious deltas
 - [Phase 05-improve-time-alignment]: compute_delta_report only produces entries for files present in both baseline and current (not new or deleted files)
+- [Phase 05-improve-time-alignment]: Milestone bar hidden for milestones.len() <= 1: timeline is a navigation tool not a color overlay
+- [Phase 05-improve-time-alignment]: Timeline visible whenever gsd_phase_report is Some, regardless of color_mode
+- [Phase 05-improve-time-alignment]: collect_commit_summaries walks git2 revwalk in background thread (gsd_phase_adapter), result carried in GsdPhaseReport.commits
 
 ### Pending Todos
 
@@ -138,6 +142,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T00:23:33.157Z
-Stopped at: Completed 05-improve-time-alignment-01-PLAN.md
+Last session: 2026-03-16T00:33:21.603Z
+Stopped at: Completed 05-improve-time-alignment-02-PLAN.md
 Resume file: None

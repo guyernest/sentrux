@@ -65,15 +65,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Timeline Navigator
 
-- [ ] **TLNV-01**: 3-tier hierarchical timeline navigator (time ticks / milestones / phases / commits) replaces the Phase 4 proportional phase bar
-- [ ] **TLNV-02**: Time ticks row with auto-scaling granularity (hours/days/weeks) and gap compression for idle periods
+- [x] **TLNV-01**: 3-tier hierarchical timeline navigator (time ticks / milestones / phases / commits) replaces the Phase 4 proportional phase bar
+- [x] **TLNV-02**: Time ticks row with auto-scaling granularity (hours/days/weeks) and gap compression for idle periods
 - [x] **TLNV-03**: Commit segments display short hash labels with hover tooltips showing full message, author, date, file count
 
 ### Timeline Filtering
 
 - [ ] **FILT-01**: Clicking a milestone/phase/commit filters the treemap to show changes from selected point to present
 - [ ] **FILT-02**: Reset mechanism: dedicated button and click-to-deselect (clicking already-selected segment clears filter)
-- [ ] **FILT-03**: Hierarchical drill-down: clicking milestone filters phases, clicking phase filters commits
+- [x] **FILT-03**: Hierarchical drill-down: clicking milestone filters phases, clicking phase filters commits
 
 ### Analysis Snapshots
 
