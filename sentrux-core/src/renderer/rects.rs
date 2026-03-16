@@ -425,14 +425,20 @@ pub(crate) fn compute_delta_net_score(delta: &FileDeltaEntry) -> i32 {
         - delta.clippy_count_delta.unwrap_or(0)
 }
 
+/// A full TDG letter grade spans 3 sub-ranks (e.g. B-, B, B+).
+/// Deltas smaller than this are sub-rank noise — not worth showing.
+const TDG_FULL_GRADE_STEP: i32 = 3;
+
 /// Render per-metric delta indicators at the top-right of a rect.
 ///
 /// Shows individual indicators only for metrics that meaningfully changed:
-/// - TDG grade: only if the letter grade actually changed (ignores +/- sub-rank noise)
-/// - Coverage: ↑/↓ with rounded percentage change
-/// - Clippy: ↑/↓ with warning count change
+/// - TDG grade: ▲TDG / ▼TDG only when letter grade changed (not sub-rank noise)
+/// - Coverage: ▲N% / ▼N% only when coverage changed by >= 1%
+/// - Clippy: ▲Nw / ▼Nw only when warning count changed
 ///
-/// This replaces the single opaque arrow that fired on any `compute_delta_net_score != 0`.
+/// Arrows always point up for improvement and down for regression,
+/// regardless of whether the underlying number went up or down.
+/// Draws directly without heap allocation (no Vec, no format! for TDG).
 fn draw_delta_arrow(
     painter: &egui::Painter,
     rect: egui::Rect,
@@ -442,54 +448,44 @@ fn draw_delta_arrow(
         return;
     }
 
-    let green = egui::Color32::from_rgb(80, 200, 80);
-    let red = egui::Color32::from_rgb(220, 60, 60);
-    let font = egui::FontId::monospace(8.0);
-
-    let mut labels: Vec<(String, egui::Color32)> = Vec::new();
-
-    // TDG: only show if grade letter changed (delta >= 3 means a full letter, e.g. B→A)
-    // Smaller deltas are sub-rank noise (B→B+) — not worth showing
-    if delta.tdg_grade_delta.abs() >= 3 {
-        let (sym, clr) = if delta.tdg_grade_delta > 0 { ("▲", green) } else { ("▼", red) };
-        labels.push((format!("{sym}TDG"), clr));
-    }
-
-    // Coverage: show if changed by at least 1%
-    if let Some(cov) = delta.coverage_pct_delta {
-        if cov.abs() >= 1.0 {
-            let (sym, clr) = if cov > 0.0 { ("▲", green) } else { ("▼", red) };
-            labels.push((format!("{sym}{:.0}%", cov.abs()), clr));
-        }
-    }
-
-    // Clippy: show if warning count changed at all
-    if let Some(clip) = delta.clippy_count_delta {
-        if clip != 0 {
-            // Fewer warnings = green (improvement), more = red
-            let (sym, clr) = if clip < 0 { ("▼", green) } else { ("▲", red) };
-            labels.push((format!("{sym}{}w", clip.abs()), clr));
-        }
-    }
-
-    if labels.is_empty() {
+    // Quick check: skip if no metric crossed its threshold
+    let has_tdg = delta.tdg_grade_delta.abs() >= TDG_FULL_GRADE_STEP;
+    let has_cov = delta.coverage_pct_delta.is_some_and(|c| c.abs() >= 1.0);
+    let has_clip = delta.clippy_count_delta.is_some_and(|c| c != 0);
+    if !has_tdg && !has_cov && !has_clip {
         return;
     }
 
-    // Draw labels stacked vertically from top-right corner
-    let mut y_offset = 2.0;
-    for (text, color) in &labels {
-        painter.text(
-            rect.right_top() + egui::vec2(-2.0, y_offset),
-            egui::Align2::RIGHT_TOP,
-            text,
-            font.clone(),
-            *color,
-        );
-        y_offset += 10.0;
-        if rect.right_top().y + y_offset > rect.bottom() - 2.0 {
-            break; // don't overflow the rect
-        }
+    let green = egui::Color32::from_rgb(80, 200, 80);
+    let red = egui::Color32::from_rgb(220, 60, 60);
+    let font = egui::FontId::monospace(8.0);
+    let anchor = rect.right_top();
+    let max_y = rect.bottom() - 10.0;
+    let mut y = 2.0;
+
+    // TDG: ▲ = improved (grade went up), ▼ = regressed
+    if has_tdg {
+        let (label, clr) = if delta.tdg_grade_delta > 0 { ("▲TDG", green) } else { ("▼TDG", red) };
+        painter.text(anchor + egui::vec2(-2.0, y), egui::Align2::RIGHT_TOP, label, font.clone(), clr);
+        y += 10.0;
+    }
+
+    // Coverage: ▲ = more coverage (improved), ▼ = less
+    if has_cov && anchor.y + y <= max_y {
+        let cov = delta.coverage_pct_delta.unwrap();
+        let (sym, clr) = if cov > 0.0 { ("▲", green) } else { ("▼", red) };
+        let label = format!("{sym}{:.0}%", cov.abs());
+        painter.text(anchor + egui::vec2(-2.0, y), egui::Align2::RIGHT_TOP, &label, font.clone(), clr);
+        y += 10.0;
+    }
+
+    // Clippy: ▲ = fewer warnings (improved), ▼ = more warnings (regressed)
+    if has_clip && anchor.y + y <= max_y {
+        let clip = delta.clippy_count_delta.unwrap();
+        // Fewer warnings (clip < 0) = improvement = ▲ green
+        let (sym, clr) = if clip < 0 { ("▲", green) } else { ("▼", red) };
+        let label = format!("{sym}{}w", clip.abs());
+        painter.text(anchor + egui::vec2(-2.0, y), egui::Align2::RIGHT_TOP, &label, font, clr);
     }
 }
 
