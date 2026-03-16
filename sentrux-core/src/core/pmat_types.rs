@@ -500,7 +500,7 @@ pub enum TimelineSelectionKind {
 }
 
 /// Represents the user's current selection in the timeline bar.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TimelineSelection {
     /// What kind of item was selected
     pub kind: TimelineSelectionKind,
