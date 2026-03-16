@@ -81,6 +81,18 @@ impl SentruxApp {
                     ctx.request_repaint();
                 }
                 ScanMsg::GsdPhaseReady(report) => {
+                    // Extract timeline data before storing report
+                    let n_phases = report.phases.len();
+                    self.state.commit_summaries = report.commits.clone();
+                    // Build single milestone (v1: milestone bar hidden for 1 milestone per CONTEXT.md)
+                    self.state.milestone_infos = if n_phases > 0 {
+                        vec![crate::core::pmat_types::MilestoneInfo {
+                            name: "v1.0".to_string(),
+                            phase_indices: (0..n_phases).collect(),
+                        }]
+                    } else {
+                        Vec::new()
+                    };
                     self.state.gsd_phase_report = Some(report);
                     self.state.gsd_phase_running = false;
                     ctx.request_repaint();
@@ -587,6 +599,14 @@ impl SentruxApp {
         self.state.gsd_phase_report = None;
         self.state.gsd_phase_running = false;
         self.state.selected_phase_idx = None;
+        // Reset timeline navigator data — stale for new directory
+        self.state.commit_summaries.clear();
+        self.state.milestone_infos.clear();
+        self.state.timeline_selection = None;
+        self.state.timeline_delta_report = None;
+        self.state.delta_running = false;
+        self.state.delta_requested = false;
+        // NOTE: snapshot_write_running is NOT reset — independent of scan
         self.state.community_highlight = None;
         self.state.impact_files = None;
         self.state.top_connections_cache = None;

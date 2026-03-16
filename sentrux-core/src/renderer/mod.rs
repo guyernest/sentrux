@@ -20,7 +20,7 @@ use crate::core::heat::HeatTracker;
 use crate::core::settings::ThemeConfig;
 use crate::layout::viewport::ViewportTransform;
 use crate::core::settings::Settings;
-use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport};
+use crate::core::pmat_types::{GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport, TimelineDeltaReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
@@ -91,6 +91,9 @@ pub struct RenderContext<'a> {
     /// GSD phase overlay report for GsdPhase color mode.
     /// Set to None until Plan 04-02 wires it into AppState and populates RenderContext.
     pub gsd_phase_report: Option<&'a GsdPhaseReport>,
+    /// Timeline delta report for diff-over-time arrow overlay (Plan 03).
+    /// Set to None until user triggers delta computation via timeline selection.
+    pub delta_report: Option<&'a TimelineDeltaReport>,
 }
 
 /// Orchestrate a single frame of rendering onto the canvas painter.

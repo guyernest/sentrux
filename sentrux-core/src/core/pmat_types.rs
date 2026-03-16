@@ -635,6 +635,9 @@ pub struct GsdPhaseReport {
     /// Map from scan-root-relative file path → index into `phases`
     /// (most recent phase wins when a file appears in multiple phases)
     pub by_file: HashMap<String, usize>,
+    /// Per-commit metadata for the timeline bar, sorted by epoch ascending.
+    /// Populated during gsd_phase_adapter parsing from the git revwalk.
+    pub commits: Vec<CommitSummary>,
 }
 
 impl GsdPhaseReport {

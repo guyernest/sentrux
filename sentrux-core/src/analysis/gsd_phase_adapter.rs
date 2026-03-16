@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::core::pmat_types::{GsdPhaseReport, PhaseInfo, PhaseStatus};
+use crate::core::pmat_types::{CommitSummary, GsdPhaseReport, PhaseInfo, PhaseStatus};
 
 // ── Public API ───────────────────────────────────────────────────────────
 
@@ -40,7 +40,10 @@ pub fn parse_gsd_phases(scan_root: &str) -> Option<GsdPhaseReport> {
         }
     }
 
-    Some(GsdPhaseReport { phases, by_file })
+    // Collect commit summaries from git history, annotated with phase_idx
+    let commits = collect_commit_summaries(scan_root, &phases);
+
+    Some(GsdPhaseReport { phases, by_file, commits })
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────
@@ -261,6 +264,110 @@ fn detect_phase_commit_ranges(scan_root: &str, phases: &mut Vec<PhaseInfo>) {
             phases[idx].commit_range = Some((from, to));
         }
     }
+}
+
+/// Collect per-commit metadata for the timeline bar.
+///
+/// Walks the git history (newest first, up to 2000 commits), annotates each
+/// commit with which phase it belongs to (if any), and returns them sorted by
+/// epoch ascending (oldest first) for display in the timeline navigator.
+fn collect_commit_summaries(scan_root: &str, phases: &[PhaseInfo]) -> Vec<CommitSummary> {
+    use git2::{Repository, Sort};
+    use regex::Regex;
+
+    let repo = match Repository::discover(scan_root) {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    let mut revwalk = match repo.revwalk() {
+        Ok(rw) => rw,
+        Err(_) => return Vec::new(),
+    };
+    // Walk newest-to-oldest (default order) for efficiency
+    if revwalk.push_head().is_err() {
+        return Vec::new();
+    }
+    if revwalk.set_sorting(Sort::TIME).is_err() {
+        return Vec::new();
+    }
+
+    // Build phase_index: phase number → index (same logic as detect_phase_commit_ranges)
+    let phase_index: HashMap<String, usize> = phases
+        .iter()
+        .enumerate()
+        .map(|(i, p)| (p.number.clone(), i))
+        .collect();
+
+    // Also build commit-sha → phase_idx from existing commit_range data
+    // (phases that already have ranges from detect_phase_commit_ranges)
+    // We re-walk independently here, using the scope regex for per-commit annotation.
+    let scope_re = Regex::new(r"\((\d+)(?:[.\-](\d+))?\)").expect("valid regex");
+
+    let mut commits = Vec::new();
+    let mut count = 0usize;
+
+    for oid_result in revwalk {
+        if count >= 2000 {
+            break;
+        }
+        let oid = match oid_result {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+        let commit = match repo.find_commit(oid) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        count += 1;
+
+        let msg = commit.message().unwrap_or("").to_string();
+        let first_line = msg.lines().next().unwrap_or("").to_string();
+        let author = commit.author().name().unwrap_or("").to_string();
+        let epoch = commit.time().seconds();
+        let sha = oid.to_string();
+        let short_sha = sha.chars().take(7).collect::<String>();
+
+        // Determine file count via diff against first parent
+        let file_count = {
+            let parent_tree = commit.parent(0).ok().and_then(|p| p.tree().ok());
+            let cur_tree = commit.tree().ok();
+            match (parent_tree, cur_tree) {
+                (Some(pt), Some(ct)) => {
+                    repo.diff_tree_to_tree(Some(&pt), Some(&ct), None)
+                        .map(|d| d.deltas().count())
+                        .unwrap_or(0)
+                }
+                (None, Some(ct)) => {
+                    // First commit in repo: count all files in tree
+                    ct.iter().count()
+                }
+                _ => 0,
+            }
+        };
+
+        // Annotate with phase_idx from commit scope
+        let phase_idx = if let Some(cap) = scope_re.captures(&msg) {
+            let phase_num_raw = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+            let phase_num = zero_pad_phase(phase_num_raw);
+            phase_index.get(&phase_num).copied()
+        } else {
+            None
+        };
+
+        commits.push(CommitSummary {
+            sha,
+            short_sha,
+            message: first_line,
+            author,
+            epoch,
+            file_count,
+            phase_idx,
+        });
+    }
+
+    // Sort oldest-first for timeline display
+    commits.sort_by_key(|c| c.epoch);
+    commits
 }
 
 /// Parse YAML frontmatter `files_modified` list from a PLAN.md file.
@@ -689,7 +796,7 @@ key-files:
         ];
         let mut by_file = HashMap::new();
         by_file.insert("src/main.rs".to_string(), 0);
-        let report = GsdPhaseReport { phases, by_file };
+        let report = GsdPhaseReport { phases, by_file, commits: Vec::new() };
         let phase = report.phase_for_file("src/main.rs");
         assert!(phase.is_some());
         assert_eq!(phase.unwrap().name, "Cleanup");
@@ -700,6 +807,7 @@ key-files:
         let report = GsdPhaseReport {
             phases: vec![],
             by_file: HashMap::new(),
+            commits: Vec::new(),
         };
         assert!(report.phase_for_file("unknown.rs").is_none());
     }
@@ -718,7 +826,7 @@ key-files:
                 files: vec![], commit_range: None,
             },
         ];
-        let report = GsdPhaseReport { phases, by_file: HashMap::new() };
+        let report = GsdPhaseReport { phases, by_file: HashMap::new(), commits: Vec::new() };
         assert_eq!(report.phase_count(), 2);
     }
 

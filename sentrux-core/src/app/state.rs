@@ -9,7 +9,7 @@ use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::layout::types::ColorMode;
-use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport, TimelineDeltaReport};
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport, TimelineDeltaReport, CommitSummary, MilestoneInfo, TimelineSelection};
 use crate::metrics::evo::git_walker::DiffWindow;
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
@@ -196,10 +196,22 @@ pub struct AppState {
     // ── Timeline / snapshot delta ──
     /// True while an analysis snapshot write is in progress on a background thread
     pub snapshot_write_running: bool,
+    /// Flag set when scan completes to trigger snapshot write on next frame
+    pub snapshot_write_requested: bool,
     /// Latest timeline delta report — None until user triggers delta computation
     pub timeline_delta_report: Option<TimelineDeltaReport>,
     /// True while timeline delta computation is running on a background thread
     pub delta_running: bool,
+    /// Flag set when timeline selection changes to trigger delta computation
+    pub delta_requested: bool,
+
+    // ── Timeline navigator data ──
+    /// Commit summaries for timeline bar — populated when GsdPhaseReady arrives
+    pub commit_summaries: Vec<CommitSummary>,
+    /// Milestone groupings — populated when GsdPhaseReady arrives
+    pub milestone_infos: Vec<MilestoneInfo>,
+    /// User's current timeline selection (milestone / phase / commit)
+    pub timeline_selection: Option<TimelineSelection>,
 
     /// BUG 2 fix: flag set by toolbar when "Open Folder" is clicked.
     /// The app handles the actual dialog on a background thread to avoid
@@ -326,8 +338,13 @@ impl AppState {
             community_highlight: None,
             impact_files: None,
             snapshot_write_running: false,
+            snapshot_write_requested: false,
             timeline_delta_report: None,
             delta_running: false,
+            delta_requested: false,
+            commit_summaries: Vec::new(),
+            milestone_infos: Vec::new(),
+            timeline_selection: None,
             folder_picker_requested: false,
             coverage_requested: false,
             hidden_paths: Arc::new(HashSet::new()),
