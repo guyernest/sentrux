@@ -334,6 +334,7 @@ fn scanner_thread_sends_complete() {
             Ok(ScanMsg::CoverageReady(_)) | Ok(ScanMsg::CoverageError(_)) => continue,
             Ok(ScanMsg::GitDiffReady(_)) | Ok(ScanMsg::GitDiffError(_)) => continue,
             Ok(ScanMsg::GsdPhaseReady(_)) | Ok(ScanMsg::GsdPhaseError(_)) => continue,
+            Ok(ScanMsg::SnapshotStored(_)) | Ok(ScanMsg::DeltaReady(_)) | Ok(ScanMsg::DeltaError(_)) => continue,
             Err(_) => continue,
         }
     }

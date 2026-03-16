@@ -9,7 +9,7 @@ use crate::metrics::evo::EvolutionReport;
 use crate::metrics::testgap::TestGapReport;
 use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::layout::types::ColorMode;
-use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport};
+use crate::core::pmat_types::{PmatReport, GraphMetricsReport, CoverageReport, ClippyReport, GitDiffReport, GsdPhaseReport, TimelineDeltaReport};
 use crate::metrics::evo::git_walker::DiffWindow;
 use crate::core::heat::HeatTracker;
 use crate::layout::spatial_index::SpatialIndex;
@@ -193,6 +193,14 @@ pub struct AppState {
     /// Pre-computed impact files for ImpactRadius focus mode (transitive dependents).
     pub impact_files: Option<Arc<HashSet<String>>>,
 
+    // ── Timeline / snapshot delta ──
+    /// True while an analysis snapshot write is in progress on a background thread
+    pub snapshot_write_running: bool,
+    /// Latest timeline delta report — None until user triggers delta computation
+    pub timeline_delta_report: Option<TimelineDeltaReport>,
+    /// True while timeline delta computation is running on a background thread
+    pub delta_running: bool,
+
     /// BUG 2 fix: flag set by toolbar when "Open Folder" is clicked.
     /// The app handles the actual dialog on a background thread to avoid
     /// blocking the UI (especially on Linux where rfd blocks the event loop).
@@ -317,6 +325,9 @@ impl AppState {
             max_risk_raw: 1.0,
             community_highlight: None,
             impact_files: None,
+            snapshot_write_running: false,
+            timeline_delta_report: None,
+            delta_running: false,
             folder_picker_requested: false,
             coverage_requested: false,
             hidden_paths: Arc::new(HashSet::new()),

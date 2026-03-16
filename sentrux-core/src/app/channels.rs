@@ -84,6 +84,12 @@ pub enum ScanMsg {
     GsdPhaseReady(GsdPhaseReport),
     /// GSD phase overlay analysis failed — error message for logging
     GsdPhaseError(String),
+    /// Analysis snapshot successfully written — carries the path of the written file
+    SnapshotStored(String),
+    /// Timeline delta computation completed — carries the delta report
+    DeltaReady(crate::core::pmat_types::TimelineDeltaReport),
+    /// Timeline delta computation failed — error message for logging
+    DeltaError(String),
 }
 
 /// Messages from main thread → layout thread.

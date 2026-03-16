@@ -456,6 +456,131 @@ pub struct AnalysisSnapshot {
     pub files: Vec<FileAnalysisSnapshot>,
 }
 
+// ── Timeline types ───────────────────────────────────────────────────────
+
+/// Per-commit metadata for the timeline commit bar.
+#[derive(Debug, Clone)]
+pub struct CommitSummary {
+    /// Full git commit SHA
+    pub sha: String,
+    /// Short SHA (first 7 chars)
+    pub short_sha: String,
+    /// Commit message (first line)
+    pub message: String,
+    /// Author name
+    pub author: String,
+    /// Unix epoch of commit
+    pub epoch: i64,
+    /// Number of files touched
+    pub file_count: usize,
+    /// Index into GsdPhaseReport.phases if this commit is part of a phase
+    pub phase_idx: Option<usize>,
+}
+
+/// Milestone grouping: a named milestone covering one or more GSD phases.
+///
+/// For Phase 5 v1, there is typically one milestone (v1.0).
+#[derive(Debug, Clone)]
+pub struct MilestoneInfo {
+    /// Milestone name (e.g. "v1.0")
+    pub name: String,
+    /// Indices into GsdPhaseReport.phases covered by this milestone
+    pub phase_indices: Vec<usize>,
+}
+
+/// What kind of item is selected in the timeline bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimelineSelectionKind {
+    /// A named milestone (v1.0, etc.)
+    Milestone,
+    /// A GSD planning phase
+    Phase,
+    /// An individual git commit
+    Commit,
+}
+
+/// Represents the user's current selection in the timeline bar.
+#[derive(Debug, Clone)]
+pub struct TimelineSelection {
+    /// What kind of item was selected
+    pub kind: TimelineSelectionKind,
+    /// Index of the selected item (into milestones/phases/commits slice)
+    pub index: usize,
+    /// Unix epoch at the start of the selected item's time range
+    pub epoch_start: i64,
+}
+
+/// Per-file delta entry for a timeline diff comparison.
+#[derive(Debug, Clone)]
+pub struct FileDeltaEntry {
+    /// Change in TDG grade rank (positive = improved, negative = regressed)
+    pub tdg_grade_delta: i32,
+    /// Change in line coverage percentage (positive = improved)
+    pub coverage_pct_delta: Option<f64>,
+    /// Change in clippy warning count (negative = improved)
+    pub clippy_count_delta: Option<i32>,
+}
+
+/// Delta report comparing baseline snapshot to current analysis.
+#[derive(Debug, Clone)]
+pub struct TimelineDeltaReport {
+    /// Per-file deltas, keyed by scan-root-relative path
+    pub by_file: std::collections::HashMap<String, FileDeltaEntry>,
+    /// Unix epoch of the baseline snapshot
+    pub baseline_epoch: i64,
+}
+
+/// Map a PMAT grade string to an integer rank for delta computation.
+///
+/// APLus=10, A=9, AMinus=8, BPlus=7, B=6, BMinus=5, CPlus=4, C=3, CMinus=2, D=1, F=0.
+/// Returns -1 for unknown/empty grades.
+///
+/// # Examples
+/// ```
+/// use sentrux_core::core::pmat_types::grade_to_rank;
+/// assert_eq!(grade_to_rank("APLus"), 10);
+/// assert_eq!(grade_to_rank("F"), 0);
+/// assert_eq!(grade_to_rank("unknown"), -1);
+/// ```
+pub fn grade_to_rank(grade: &str) -> i32 {
+    match grade {
+        "APLus"  => 10,
+        "A"      => 9,
+        "AMinus" => 8,
+        "BPlus"  => 7,
+        "B"      => 6,
+        "BMinus" => 5,
+        "CPlus"  => 4,
+        "C"      => 3,
+        "CMinus" => 2,
+        "D"      => 1,
+        "F"      => 0,
+        _        => -1,
+    }
+}
+
+/// Compute grade delta: new grade rank minus old grade rank.
+///
+/// Positive result means improvement; negative means regression; zero means no change.
+/// Returns 0 when either grade is unknown (-1) to avoid spurious deltas.
+///
+/// # Examples
+/// ```
+/// use sentrux_core::core::pmat_types::grade_delta;
+/// assert_eq!(grade_delta("C", "A"), 6);   // improved
+/// assert_eq!(grade_delta("A", "C"), -6);  // regressed
+/// assert_eq!(grade_delta("B", "B"), 0);   // no change
+/// ```
+pub fn grade_delta(old_grade: &str, new_grade: &str) -> i32 {
+    let old_rank = grade_to_rank(old_grade);
+    let new_rank = grade_to_rank(new_grade);
+    // If either is unknown, return 0 (no meaningful comparison)
+    if old_rank == -1 || new_rank == -1 {
+        return 0;
+    }
+    new_rank - old_rank
+}
+
 // ── GSD phase overlay types ──────────────────────────────────────────────
 
 /// Status of a GSD planning phase.
@@ -936,5 +1061,91 @@ mod tests {
         // Style (default)
         assert_eq!(lint_category("clippy::doc_markdown"), "style");
         assert_eq!(lint_category("clippy::some_unknown_lint"), "style");
+    }
+}
+
+#[cfg(test)]
+mod timeline_tests {
+    use super::*;
+
+    #[test]
+    fn test_grade_to_rank() {
+        assert_eq!(grade_to_rank("APLus"),  10);
+        assert_eq!(grade_to_rank("A"),       9);
+        assert_eq!(grade_to_rank("AMinus"),  8);
+        assert_eq!(grade_to_rank("BPlus"),   7);
+        assert_eq!(grade_to_rank("B"),       6);
+        assert_eq!(grade_to_rank("BMinus"),  5);
+        assert_eq!(grade_to_rank("CPlus"),   4);
+        assert_eq!(grade_to_rank("C"),       3);
+        assert_eq!(grade_to_rank("CMinus"),  2);
+        assert_eq!(grade_to_rank("D"),       1);
+        assert_eq!(grade_to_rank("F"),       0);
+        assert_eq!(grade_to_rank("unknown"), -1);
+        assert_eq!(grade_to_rank(""),        -1);
+        assert_eq!(grade_to_rank("Z"),       -1);
+    }
+
+    #[test]
+    fn test_grade_delta() {
+        // Improvement: C -> A = rank 9 - rank 3 = +6
+        assert_eq!(grade_delta("C", "A"), 6, "C to A should be +6 (improvement)");
+        // Regression: A -> C = rank 3 - rank 9 = -6
+        assert_eq!(grade_delta("A", "C"), -6, "A to C should be -6 (regression)");
+        // Large improvement: F -> APLus = 10 - 0 = +10
+        assert_eq!(grade_delta("F", "APLus"), 10);
+        // Small improvement: B -> BPlus = 7 - 6 = +1
+        assert_eq!(grade_delta("B", "BPlus"), 1);
+    }
+
+    #[test]
+    fn test_grade_delta_same() {
+        assert_eq!(grade_delta("B", "B"), 0, "same grade should give delta 0");
+        assert_eq!(grade_delta("APLus", "APLus"), 0);
+        assert_eq!(grade_delta("F", "F"), 0);
+    }
+
+    #[test]
+    fn test_grade_delta_unknown_returns_zero() {
+        // Unknown grades should not produce spurious deltas
+        assert_eq!(grade_delta("unknown", "A"), 0);
+        assert_eq!(grade_delta("A", "unknown"), 0);
+        assert_eq!(grade_delta("unknown", "unknown"), 0);
+    }
+
+    #[test]
+    fn commit_summary_has_all_fields() {
+        let cs = CommitSummary {
+            sha: "abc123def456".to_string(),
+            short_sha: "abc123d".to_string(),
+            message: "feat: add timeline bar".to_string(),
+            author: "Alice".to_string(),
+            epoch: 1_700_000_000,
+            file_count: 5,
+            phase_idx: Some(2),
+        };
+        assert_eq!(cs.sha, "abc123def456");
+        assert_eq!(cs.short_sha, "abc123d");
+        assert_eq!(cs.file_count, 5);
+        assert_eq!(cs.phase_idx, Some(2));
+    }
+
+    #[test]
+    fn timeline_delta_report_fields() {
+        let mut by_file = std::collections::HashMap::new();
+        by_file.insert("src/foo.rs".to_string(), FileDeltaEntry {
+            tdg_grade_delta: 3,
+            coverage_pct_delta: Some(10.0),
+            clippy_count_delta: Some(-2),
+        });
+        let report = TimelineDeltaReport {
+            by_file,
+            baseline_epoch: 1_700_000_000,
+        };
+        let entry = report.by_file.get("src/foo.rs").unwrap();
+        assert_eq!(entry.tdg_grade_delta, 3);
+        assert_eq!(entry.coverage_pct_delta, Some(10.0));
+        assert_eq!(entry.clippy_count_delta, Some(-2));
+        assert_eq!(report.baseline_epoch, 1_700_000_000);
     }
 }

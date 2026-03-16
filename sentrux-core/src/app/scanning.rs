@@ -90,6 +90,20 @@ impl SentruxApp {
                     self.state.gsd_phase_running = false;
                     ctx.request_repaint();
                 }
+                ScanMsg::SnapshotStored(_path) => {
+                    self.state.snapshot_write_running = false;
+                    ctx.request_repaint();
+                }
+                ScanMsg::DeltaReady(report) => {
+                    self.state.timeline_delta_report = Some(report);
+                    self.state.delta_running = false;
+                    ctx.request_repaint();
+                }
+                ScanMsg::DeltaError(msg) => {
+                    eprintln!("[timeline-delta] {msg}");
+                    self.state.delta_running = false;
+                    ctx.request_repaint();
+                }
             }
         }
     }
