@@ -522,6 +522,89 @@ pub(crate) fn draw_gsd_phase_navigator(ui: &mut egui::Ui, state: &mut crate::app
     }
 }
 
+// ── Timeline navigator helper stubs (will be replaced in Task 2 implementation) ──
+
+/// Choose a tick granularity in seconds for the given epoch span.
+///
+/// Returns a tick interval such that ~5-10 ticks appear across the span.
+fn choose_tick_granularity_secs(span_secs: i64) -> i64 {
+    todo!("implement in Task 2")
+}
+
+/// Divide `bar_rect` into `count` equal-width sub-rects horizontally.
+///
+/// Returns an empty vec if count is 0.
+fn equal_segment_rects(bar_rect: egui::Rect, count: usize) -> Vec<egui::Rect> {
+    todo!("implement in Task 2")
+}
+
+#[cfg(test)]
+mod timeline_tests {
+    use super::*;
+
+    #[test]
+    fn test_choose_tick_granularity_1h() {
+        // 1-hour span → 10-minute ticks (600s)
+        assert_eq!(choose_tick_granularity_secs(3600), 600);
+    }
+
+    #[test]
+    fn test_choose_tick_granularity_1d() {
+        // 1-day span → 4-hour ticks (14400s)
+        assert_eq!(choose_tick_granularity_secs(86400), 14400);
+    }
+
+    #[test]
+    fn test_choose_tick_granularity_30d() {
+        // 30-day span → daily ticks (86400s)
+        assert_eq!(choose_tick_granularity_secs(86400 * 30), 86400);
+    }
+
+    #[test]
+    fn test_choose_tick_granularity_1y() {
+        // 1-year span → monthly ticks (2592000s = 30 days)
+        assert_eq!(choose_tick_granularity_secs(86400 * 365), 2_592_000);
+    }
+
+    #[test]
+    fn test_choose_tick_granularity_zero() {
+        // Zero span → fallback (60s)
+        assert_eq!(choose_tick_granularity_secs(0), 60);
+    }
+
+    #[test]
+    fn test_equal_segment_rects_even() {
+        let bar = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(100.0, 10.0));
+        let segs = equal_segment_rects(bar, 4);
+        assert_eq!(segs.len(), 4);
+        // Each segment should be 25px wide
+        for seg in &segs {
+            assert!((seg.width() - 25.0).abs() < 0.5, "expected 25px width, got {}", seg.width());
+        }
+        // First seg starts at 0, second at 25, etc.
+        assert!((segs[0].left() - 0.0).abs() < 0.5);
+        assert!((segs[1].left() - 25.0).abs() < 0.5);
+        assert!((segs[2].left() - 50.0).abs() < 0.5);
+        assert!((segs[3].left() - 75.0).abs() < 0.5);
+    }
+
+    #[test]
+    fn test_equal_segment_rects_zero() {
+        let bar = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(100.0, 10.0));
+        let segs = equal_segment_rects(bar, 0);
+        assert!(segs.is_empty(), "count=0 should return empty vec");
+    }
+
+    #[test]
+    fn test_equal_segment_rects_one() {
+        let bar = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(100.0, 10.0));
+        let segs = equal_segment_rects(bar, 1);
+        assert_eq!(segs.len(), 1);
+        assert!((segs[0].left() - bar.left()).abs() < 0.5);
+        assert!((segs[0].right() - bar.right()).abs() < 0.5);
+    }
+}
+
 /// Draw a per-mode color legend below the toolbar.
 ///
 /// Only rendered for modes that have a meaningful color scale (GitDiff, TdgGrade,
