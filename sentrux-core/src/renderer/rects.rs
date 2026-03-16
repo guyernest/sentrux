@@ -425,33 +425,72 @@ pub(crate) fn compute_delta_net_score(delta: &FileDeltaEntry) -> i32 {
         - delta.clippy_count_delta.unwrap_or(0)
 }
 
-/// Render a green up-arrow or red down-arrow at the top-right of a rect when there is
-/// a non-zero net delta score. No-ops when rect is too small or delta is zero.
+/// Render per-metric delta indicators at the top-right of a rect.
+///
+/// Shows individual indicators only for metrics that meaningfully changed:
+/// - TDG grade: only if the letter grade actually changed (ignores +/- sub-rank noise)
+/// - Coverage: ↑/↓ with rounded percentage change
+/// - Clippy: ↑/↓ with warning count change
+///
+/// This replaces the single opaque arrow that fired on any `compute_delta_net_score != 0`.
 fn draw_delta_arrow(
     painter: &egui::Painter,
     rect: egui::Rect,
     delta: &FileDeltaEntry,
 ) {
-    let net = compute_delta_net_score(delta);
-    if net == 0 {
+    if rect.width() < 24.0 || rect.height() < 14.0 {
         return;
     }
-    // Only draw if rect is large enough (at least 16px in both dimensions)
-    if rect.width() < 16.0 || rect.height() < 16.0 {
+
+    let green = egui::Color32::from_rgb(80, 200, 80);
+    let red = egui::Color32::from_rgb(220, 60, 60);
+    let font = egui::FontId::monospace(8.0);
+
+    let mut labels: Vec<(String, egui::Color32)> = Vec::new();
+
+    // TDG: only show if grade letter changed (delta >= 3 means a full letter, e.g. B→A)
+    // Smaller deltas are sub-rank noise (B→B+) — not worth showing
+    if delta.tdg_grade_delta.abs() >= 3 {
+        let (sym, clr) = if delta.tdg_grade_delta > 0 { ("▲", green) } else { ("▼", red) };
+        labels.push((format!("{sym}TDG"), clr));
+    }
+
+    // Coverage: show if changed by at least 1%
+    if let Some(cov) = delta.coverage_pct_delta {
+        if cov.abs() >= 1.0 {
+            let (sym, clr) = if cov > 0.0 { ("▲", green) } else { ("▼", red) };
+            labels.push((format!("{sym}{:.0}%", cov.abs()), clr));
+        }
+    }
+
+    // Clippy: show if warning count changed at all
+    if let Some(clip) = delta.clippy_count_delta {
+        if clip != 0 {
+            // Fewer warnings = green (improvement), more = red
+            let (sym, clr) = if clip < 0 { ("▼", green) } else { ("▲", red) };
+            labels.push((format!("{sym}{}w", clip.abs()), clr));
+        }
+    }
+
+    if labels.is_empty() {
         return;
     }
-    let (symbol, color) = if net > 0 {
-        ("\u{25B2}", egui::Color32::from_rgb(80, 200, 80))   // green up triangle
-    } else {
-        ("\u{25BC}", egui::Color32::from_rgb(220, 60, 60))   // red down triangle
-    };
-    painter.text(
-        rect.right_top() + egui::vec2(-10.0, 4.0),
-        egui::Align2::RIGHT_TOP,
-        symbol,
-        egui::FontId::monospace(9.0),
-        color,
-    );
+
+    // Draw labels stacked vertically from top-right corner
+    let mut y_offset = 2.0;
+    for (text, color) in &labels {
+        painter.text(
+            rect.right_top() + egui::vec2(-2.0, y_offset),
+            egui::Align2::RIGHT_TOP,
+            text,
+            font.clone(),
+            *color,
+        );
+        y_offset += 10.0;
+        if rect.right_top().y + y_offset > rect.bottom() - 2.0 {
+            break; // don't overflow the rect
+        }
+    }
 }
 
 /// Compute file color based on current color mode. Used by both main canvas and minimap.
