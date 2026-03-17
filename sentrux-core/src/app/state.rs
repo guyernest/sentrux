@@ -208,6 +208,10 @@ pub struct AppState {
     pub timeline_selection: Option<TimelineSelection>,
     /// Color mode saved before timeline selection — restored on reset
     pub pre_timeline_color_mode: Option<ColorMode>,
+    /// True when the app auto-switched to GitDiff on the in-progress phase.
+    /// Distinguishes auto-switch from user-initiated timeline clicks.
+    /// Cleared when timeline_selection is set by user action.
+    pub auto_diff_active: bool,
 
     /// BUG 2 fix: flag set by toolbar when "Open Folder" is clicked.
     /// The app handles the actual dialog on a background thread to avoid
@@ -339,6 +343,7 @@ impl AppState {
             milestone_infos: Vec::new(),
             timeline_selection: None,
             pre_timeline_color_mode: None,
+            auto_diff_active: false,
             folder_picker_requested: false,
             coverage_requested: false,
             hidden_paths: Arc::new(HashSet::new()),
@@ -493,6 +498,13 @@ mod tests {
         assert!(!state.delta_requested);
         assert!(state.timeline_selection.is_none());
         assert!(state.pre_timeline_color_mode.is_none());
+        assert!(!state.auto_diff_active);
+    }
+
+    #[test]
+    fn new_state_auto_diff_active_is_false() {
+        let state = AppState::new();
+        assert!(!state.auto_diff_active, "auto_diff_active must default to false");
     }
 
     // ── record_activity ──────────────────────────────────────────────────

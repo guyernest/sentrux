@@ -97,6 +97,9 @@ impl SentruxApp {
                     } else {
                         Vec::new()
                     };
+                    // Auto-switch to GitDiff for InProgress phase BEFORE storing report
+                    // (avoids borrow conflict: call with &report, then move into state)
+                    try_apply_auto_diff(&mut self.state, &report);
                     self.state.gsd_phase_report = Some(report);
                     self.state.gsd_phase_running = false;
                     ctx.request_repaint();
@@ -744,5 +747,148 @@ impl SentruxApp {
             }
             self.watcher_setup_rx = Some(handle_rx);
         }
+    }
+}
+
+/// Auto-switch to GitDiff mode showing the highest-numbered InProgress phase.
+/// Only fires when timeline_selection is None and a qualifying phase exists.
+/// Mirrors the same save/restore pattern used by draw_timeline_navigator().
+fn try_apply_auto_diff(
+    state: &mut crate::app::state::AppState,
+    report: &crate::core::pmat_types::GsdPhaseReport,
+) {
+    // Guard: don't override user timeline selection
+    if state.timeline_selection.is_some() {
+        return;
+    }
+    // Find the highest-numbered InProgress phase with a commit_range
+    let in_progress = report.phases.iter()
+        .rposition(|p| {
+            p.status == crate::core::pmat_types::PhaseStatus::InProgress
+                && p.commit_range.is_some()
+        })
+        .and_then(|idx| report.phases[idx].commit_range.clone());
+
+    if let Some((from_sha, _to_sha)) = in_progress {
+        // Save color mode (same pattern as draw_timeline_navigator)
+        if state.pre_timeline_color_mode.is_none() {
+            state.pre_timeline_color_mode = Some(state.color_mode);
+        }
+        state.color_mode = crate::layout::types::ColorMode::GitDiff;
+        state.git_diff_window = crate::metrics::evo::git_walker::DiffWindow::CommitRange {
+            from: from_sha,
+            to: "HEAD".to_string(),
+        };
+        state.git_diff_requested = true;
+        state.auto_diff_active = true;
+    }
+}
+
+#[cfg(test)]
+mod auto_diff_scan_tests {
+    use super::*;
+    use crate::app::state::AppState;
+    use crate::core::pmat_types::{
+        GsdPhaseReport, PhaseInfo, PhaseStatus,
+        TimelineSelection, TimelineSelectionKind,
+    };
+    use crate::layout::types::ColorMode;
+    use crate::metrics::evo::git_walker::DiffWindow;
+    use std::collections::HashMap;
+
+    fn make_phase(status: PhaseStatus, commit_range: Option<(&str, &str)>) -> PhaseInfo {
+        PhaseInfo {
+            number: "01".to_string(),
+            name: "Test Phase".to_string(),
+            goal: String::new(),
+            status,
+            completed_date: None,
+            files: Vec::new(),
+            commit_range: commit_range.map(|(f, t)| (f.to_string(), t.to_string())),
+        }
+    }
+
+    fn make_report(phases: Vec<PhaseInfo>) -> GsdPhaseReport {
+        GsdPhaseReport {
+            phases,
+            by_file: HashMap::new(),
+            commits: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn auto_diff_triggers_on_in_progress_phase() {
+        let mut state = AppState::new();
+        let report = make_report(vec![
+            make_phase(PhaseStatus::InProgress, Some(("sha1", "HEAD"))),
+        ]);
+
+        try_apply_auto_diff(&mut state, &report);
+
+        assert!(state.auto_diff_active, "auto_diff_active should be true after trigger");
+        assert_eq!(state.color_mode, ColorMode::GitDiff, "color_mode should switch to GitDiff");
+        assert!(state.git_diff_requested, "git_diff_requested should be true");
+        assert_eq!(
+            state.git_diff_window,
+            DiffWindow::CommitRange { from: "sha1".to_string(), to: "HEAD".to_string() },
+            "git_diff_window should be CommitRange with the phase's from_sha"
+        );
+    }
+
+    #[test]
+    fn auto_diff_blocked_by_timeline_selection() {
+        let mut state = AppState::new();
+        // Set a timeline selection to block the auto-switch
+        state.timeline_selection = Some(TimelineSelection {
+            kind: TimelineSelectionKind::Phase,
+            index: 0,
+            epoch_start: 0,
+        });
+        let report = make_report(vec![
+            make_phase(PhaseStatus::InProgress, Some(("sha1", "HEAD"))),
+        ]);
+
+        try_apply_auto_diff(&mut state, &report);
+
+        assert!(!state.auto_diff_active, "auto_diff_active must remain false when timeline_selection is set");
+        assert_ne!(state.color_mode, ColorMode::GitDiff, "color_mode must not change when guarded");
+    }
+
+    #[test]
+    fn auto_diff_skipped_when_no_commit_range() {
+        let mut state = AppState::new();
+        let report = make_report(vec![
+            make_phase(PhaseStatus::InProgress, None), // InProgress but no commit_range
+        ]);
+
+        try_apply_auto_diff(&mut state, &report);
+
+        assert!(!state.auto_diff_active, "auto_diff_active should stay false when commit_range is None");
+        assert_ne!(state.color_mode, ColorMode::GitDiff);
+    }
+
+    #[test]
+    fn auto_diff_picks_highest_numbered_in_progress() {
+        let mut state = AppState::new();
+        let mut phase0 = make_phase(PhaseStatus::Completed, Some(("sha0", "sha1")));
+        phase0.number = "01".to_string();
+        let mut phase1 = make_phase(PhaseStatus::InProgress, Some(("sha1", "sha2")));
+        phase1.number = "02".to_string();
+        let mut phase2 = make_phase(PhaseStatus::Completed, Some(("sha2", "sha3")));
+        phase2.number = "03".to_string();
+        let mut phase3 = make_phase(PhaseStatus::InProgress, Some(("sha3", "sha4")));
+        phase3.number = "04".to_string();
+
+        let report = make_report(vec![phase0, phase1, phase2, phase3]);
+
+        try_apply_auto_diff(&mut state, &report);
+
+        // Should pick the last InProgress phase (index 3, number "04")
+        assert!(state.auto_diff_active);
+        assert_eq!(
+            state.git_diff_window,
+            DiffWindow::CommitRange { from: "sha3".to_string(), to: "HEAD".to_string() },
+            "Should pick the highest-indexed InProgress phase (sha3)"
+        );
     }
 }
