@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-17T01:58:39.001Z"
+stopped_at: Completed 06-ai-monitoring-ux 06-01-PLAN.md
+last_updated: "2026-03-17T02:58:15.716Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 22
+  completed_plans: 20
   percent: 50
 ---
 
@@ -70,6 +70,7 @@ Progress: [█████░░░░░] 50%
 | Phase 05-improve-time-alignment P02 | 7 | 2 tasks | 7 files |
 | Phase 05-improve-time-alignment P03 | 2 | 2 tasks | 2 files |
 | Phase 05-improve-time-alignment P04 | 10 | 1 tasks | 2 files |
+| Phase 06-ai-monitoring-ux P01 | 18 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [Phase 05-improve-time-alignment]: DiffWindow::CommitRange{from: sha, to: HEAD} wired on selection change; reset restores DiffWindow::default()
 - [Phase 05-improve-time-alignment]: compute_delta_net_score extracted as pub(crate) for unit testability; draw_delta_arrow is private (egui painter, not unit-testable)
 - [Phase 05-improve-time-alignment]: delta_section shown when timeline_delta_report is Some regardless of color_mode
+- [Phase 06-ai-monitoring-ux]: complexity_penalty = 1.0 - grade_to_t(grade) as f64: A+ yields 0.0 (near-zero risk), F/unknown yields 1.0 (full penalty, identity); makes the parameter a multiplier not a subtracted offset
+- [Phase 06-ai-monitoring-ux]: compute_max_risk_raw uses conservative penalty=1.0 for all nodes: prevents under-estimating the maximum when A+ hub files dominate graph-metrics
 
 ### Pending Todos
 
@@ -150,6 +153,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T01:58:38.995Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-ai-monitoring-ux/06-CONTEXT.md
+Last session: 2026-03-17T02:58:15.712Z
+Stopped at: Completed 06-ai-monitoring-ux 06-01-PLAN.md
+Resume file: None
