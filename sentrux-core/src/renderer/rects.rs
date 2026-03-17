@@ -156,6 +156,19 @@ fn draw_section_rect(
                 draw_delta_arrow(dctx.painter, screen_rect, &agg_delta);
             }
         }
+
+        // Git diff directory badge: summed +/- across children (AIMON-03)
+        if ctx.color_mode == crate::layout::types::ColorMode::GitDiff {
+            if let Some(diff_report) = ctx.git_diff_report {
+                let dir_prefix = if r.path.is_empty() || r.path == "/" {
+                    String::new()
+                } else {
+                    format!("{}/", r.path)
+                };
+                let (added, removed) = aggregate_dir_diff(&diff_report.by_file, &dir_prefix);
+                draw_diff_badge(dctx.painter, screen_rect, added, removed);
+            }
+        }
     }
 }
 
@@ -205,6 +218,72 @@ fn aggregate_dir_delta(
         coverage_pct_delta: cov_avg,
         clippy_count_delta: clippy_total,
     })
+}
+
+/// Aggregate child file diff counts for a directory path prefix.
+///
+/// Returns (total_lines_added, total_lines_removed) across all children.
+/// If dir_prefix is empty, aggregates all entries in by_file (root-level query).
+/// Pattern mirrors aggregate_dir_delta filter logic.
+fn aggregate_dir_diff(
+    by_file: &std::collections::HashMap<String, crate::core::pmat_types::FileDiffData>,
+    dir_prefix: &str,
+) -> (u32, u32) {
+    let iter: Box<dyn Iterator<Item = &crate::core::pmat_types::FileDiffData>> = if dir_prefix.is_empty() {
+        Box::new(by_file.values())
+    } else {
+        Box::new(
+            by_file.iter()
+                .filter(|(k, _)| k.starts_with(dir_prefix))
+                .map(|(_, v)| v)
+        )
+    };
+    iter.fold((0u32, 0u32), |(a, r), d| (a + d.lines_added, r + d.lines_removed))
+}
+
+/// Render a GitHub-style "+N -N" line count badge at the bottom-right of a rect.
+///
+/// Guards:
+/// - Skips when rect is narrower than 60px (prevents overflow of "+1234 -567" text).
+/// - Skips when both added and removed are zero (avoids "+0 -0" noise).
+///
+/// Layout: removed (red) drawn at right edge, added (green) to its left.
+/// Font: monospace 8pt (matches draw_delta_arrow).
+fn draw_diff_badge(painter: &egui::Painter, rect: egui::Rect, added: u32, removed: u32) {
+    if rect.width() < 60.0 || rect.height() < 14.0 {
+        return;
+    }
+    if added == 0 && removed == 0 {
+        return;
+    }
+    let green = egui::Color32::from_rgb(80, 200, 80);
+    let red   = egui::Color32::from_rgb(220, 60, 60);
+    let font  = egui::FontId::monospace(8.0);
+    let y = rect.bottom() - 2.0;
+    let mut x = rect.right() - 2.0;
+    // Removed (red) drawn rightmost, added (green) to its left
+    if removed > 0 {
+        let text = format!("-{}", removed);
+        let w = text.len() as f32 * 5.0;
+        painter.text(
+            egui::pos2(x, y),
+            egui::Align2::RIGHT_BOTTOM,
+            &text,
+            font.clone(),
+            red,
+        );
+        x -= w + 3.0;
+    }
+    if added > 0 {
+        let text = format!("+{}", added);
+        painter.text(
+            egui::pos2(x, y),
+            egui::Align2::RIGHT_BOTTOM,
+            &text,
+            font.clone(),
+            green,
+        );
+    }
 }
 
 /// Render the header strip and label text for a section rectangle.
@@ -312,6 +391,15 @@ fn draw_file_rect(
         if let Some(delta_report) = ctx.delta_report {
             if let Some(delta) = delta_report.by_file.get(r.path.as_str()) {
                 draw_delta_arrow(dctx.painter, screen_rect, delta);
+            }
+        }
+
+        // Git diff +/- badge: show line counts in GitDiff mode (AIMON-02)
+        if ctx.color_mode == crate::layout::types::ColorMode::GitDiff {
+            if let Some(diff_report) = ctx.git_diff_report {
+                if let Some(diff) = diff_report.by_file.get(r.path.as_str()) {
+                    draw_diff_badge(dctx.painter, screen_rect, diff.lines_added, diff.lines_removed);
+                }
             }
         }
     }
@@ -703,6 +791,67 @@ fn color_by_tdg_grade(ctx: &RenderContext, path: &str) -> Color32 {
     };
     let grade = &report.tdg.files[idx].grade;
     colors::tdg_grade_color(grade)
+}
+
+#[cfg(test)]
+mod diff_badge_tests {
+    use super::{aggregate_dir_diff};
+    use crate::core::pmat_types::FileDiffData;
+    use std::collections::HashMap;
+
+    fn make_diff(lines_added: u32, lines_removed: u32) -> FileDiffData {
+        FileDiffData { lines_added, lines_removed, commit_count: 1, is_new_file: false }
+    }
+
+    #[test]
+    fn diff_badge_zero_both_skipped() {
+        // aggregate_dir_diff with all-zero entries returns (0, 0)
+        // draw_diff_badge would return immediately (guard: added==0 && removed==0)
+        let mut by_file = HashMap::new();
+        by_file.insert("src/a.rs".to_string(), make_diff(0, 0));
+        by_file.insert("src/b.rs".to_string(), make_diff(0, 0));
+        let (added, removed) = aggregate_dir_diff(&by_file, "src/");
+        assert_eq!(added, 0, "all-zero entries should aggregate to 0 added");
+        assert_eq!(removed, 0, "all-zero entries should aggregate to 0 removed");
+        // Verify the guard condition holds: badge would be skipped
+        assert!(added == 0 && removed == 0, "guard: badge skipped when both zero");
+    }
+
+    #[test]
+    fn aggregate_dir_diff_sums_children() {
+        // 3 FileDiffData under "src/" should sum lines_added and lines_removed
+        let mut by_file = HashMap::new();
+        by_file.insert("src/a.rs".to_string(), make_diff(10, 5));
+        by_file.insert("src/b.rs".to_string(), make_diff(20, 3));
+        by_file.insert("src/c.rs".to_string(), make_diff(5, 2));
+        // also a file NOT under src/ — should be excluded
+        by_file.insert("tests/foo.rs".to_string(), make_diff(100, 100));
+        let (added, removed) = aggregate_dir_diff(&by_file, "src/");
+        assert_eq!(added, 35, "summed added: 10+20+5=35");
+        assert_eq!(removed, 10, "summed removed: 5+3+2=10");
+    }
+
+    #[test]
+    fn aggregate_dir_diff_empty_prefix_sums_all() {
+        // dir_prefix="" should aggregate ALL entries in by_file
+        let mut by_file = HashMap::new();
+        by_file.insert("src/a.rs".to_string(), make_diff(10, 5));
+        by_file.insert("tests/b.rs".to_string(), make_diff(20, 3));
+        let (added, removed) = aggregate_dir_diff(&by_file, "");
+        assert_eq!(added, 30, "empty prefix sums all: 10+20=30");
+        assert_eq!(removed, 8, "empty prefix sums all: 5+3=8");
+    }
+
+    #[test]
+    fn aggregate_dir_diff_prefix_filter() {
+        // Files under "src/" should NOT be included when querying "tests/"
+        let mut by_file = HashMap::new();
+        by_file.insert("src/a.rs".to_string(), make_diff(100, 50));
+        by_file.insert("tests/foo.rs".to_string(), make_diff(7, 3));
+        let (added, removed) = aggregate_dir_diff(&by_file, "tests/");
+        assert_eq!(added, 7, "only tests/foo.rs matches 'tests/' prefix");
+        assert_eq!(removed, 3, "only tests/foo.rs matches 'tests/' prefix");
+    }
 }
 
 #[cfg(test)]
