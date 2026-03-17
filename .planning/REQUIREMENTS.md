@@ -86,6 +86,14 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **DLTA-02**: Small arrow indicators on treemap file/directory nodes — green up arrow for improved, red down arrow for regressed
 - [x] **DLTA-03**: File detail panel shows TDG grade change, coverage % change, and clippy count change when timeline filter is active
 
+### AI Monitoring UX
+
+- [ ] **AIMON-01**: Risk color mode multiplies by TDG complexity_penalty so A+ hub files no longer false-alarm as high-risk
+- [ ] **AIMON-02**: In GitDiff mode, file rects show green "+N" and red "-N" line count badges at bottom-right
+- [ ] **AIMON-03**: Directory rects in GitDiff mode show summed +/- line counts across all children
+- [ ] **AIMON-04**: On app open with a GSD project containing an InProgress phase, color_mode auto-switches to GitDiff showing that phase's commit range
+- [ ] **AIMON-05**: Auto-diff does not override a user's existing timeline_selection
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -163,12 +171,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DLTA-01 | Phase 5 | Planned |
 | DLTA-02 | Phase 5 | Planned |
 | DLTA-03 | Phase 5 | Planned |
+| AIMON-01 | Phase 6 | Planned |
+| AIMON-02 | Phase 6 | Planned |
+| AIMON-03 | Phase 6 | Planned |
+| AIMON-04 | Phase 6 | Planned |
+| AIMON-05 | Phase 6 | Planned |
 
 **Coverage:**
-- v1 requirements: 35 total
-- Mapped to phases: 35
+- v1 requirements: 40 total
+- Mapped to phases: 40
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-15 after Phase 5 planning*
+*Last updated: 2026-03-17 after Phase 6 planning*

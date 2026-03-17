@@ -106,7 +106,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -116,6 +116,7 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 3. Git Diff Overlay | 3/3 | Complete    | 2026-03-15 |
 | 4. GSD Phase Overlay | 2/3 | In Progress|  |
 | 5. Improve Time Alignment | 3/4 | In Progress|  |
+| 6. AI Monitoring UX | 0/3 | Planning complete | - |
 
 ### Phase 5: Improve Time Alignment
 
@@ -139,9 +140,16 @@ Plans:
 ### Phase 6: AI Monitoring UX
 
 **Goal:** Optimize the treemap for monitoring AI code assistants in real-time — phase-aware change visibility (default to current phase's changes instead of fading heat), git diff +/- line counts on file nodes, and a smarter risk model that weights centrality by complexity and coverage gaps instead of raw PageRank
-**Requirements**: TBD
+**Requirements**: AIMON-01, AIMON-02, AIMON-03, AIMON-04, AIMON-05
 **Depends on:** Phase 5
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. Simple hub files (mod.rs with grade A+) no longer appear red in Risk mode — near-zero complexity_penalty suppresses false alarms
+  2. In GitDiff mode, file rects show green "+N" and red "-N" line count badges at the bottom-right; directory rects show summed counts
+  3. Opening sentrux on a GSD project with an InProgress phase automatically activates GitDiff mode showing that phase's changes
+  4. A user who has made a manual timeline selection is not affected by the auto-switch
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 6 to break down)
+- [ ] 06-01-PLAN.md — Smarter risk model: complexity_penalty parameter derived from TDG grade
+- [ ] 06-02-PLAN.md — Git diff +/- badges on file and directory rects
+- [ ] 06-03-PLAN.md — Phase-aware auto-diff: auto_diff_active state and GsdPhaseReady trigger
