@@ -592,9 +592,10 @@ fn color_by_coverage(ctx: &RenderContext, path: &str) -> Color32 {
     colors::coverage_color(pct)
 }
 
-/// Risk color mode: combines PageRank + coverage + clippy warnings into a risk score.
+/// Risk color mode: combines PageRank + coverage + clippy warnings + TDG grade into a risk score.
 /// Falls back gracefully when individual data sources are missing.
 /// Normalizes against the project-level maximum raw risk so the riskiest file is always red.
+/// A+ hub files (e.g. mod.rs with high PageRank but trivially simple code) score near-zero.
 fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
     let max_raw = ctx.max_risk_raw;
 
@@ -612,16 +613,29 @@ fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
         .and_then(|r| r.by_file.get(path))
         .map(|d| d.total);
 
-    colors::risk_color(Some(pagerank), coverage_pct, clippy_count, max_raw)
+    // Look up TDG grade for this file (full path via by_path index).
+    // Unknown grade defaults to "unknown" → grade_to_t=0.0 → penalty=1.0 (conservative).
+    let tdg_grade = ctx.pmat_report
+        .and_then(|r| r.by_path.get(path).map(|&i| r.tdg.files[i].grade.as_str()))
+        .unwrap_or("unknown");
+    let complexity_penalty = 1.0 - crate::core::pmat_types::grade_to_t(tdg_grade) as f64;
+
+    colors::risk_color(Some(pagerank), coverage_pct, clippy_count, max_raw, complexity_penalty)
 }
 
 /// Compute the maximum raw risk value across all files in graph-metrics.
 /// Used to normalize risk coloring so the riskiest file is always maximally red.
 /// Called once when reports change (not per-frame).
+///
+/// Uses `complexity_penalty=1.0` for all nodes (conservative normalization):
+/// the maximum is the worst-case risk, so F-grade penalty is appropriate.
+/// This aligns with the pitfall noted in RESEARCH.md: the max must not be
+/// under-estimated by applying A+ reductions to hub files in the normalization loop.
 pub fn compute_max_risk_raw(
     gm: Option<&crate::core::pmat_types::GraphMetricsReport>,
     cov: Option<&crate::core::pmat_types::CoverageReport>,
     clippy: Option<&crate::core::pmat_types::ClippyReport>,
+    _pmat: Option<&crate::core::pmat_types::PmatReport>,
 ) -> f64 {
     let gm = match gm {
         Some(gm) => gm,
@@ -641,7 +655,9 @@ pub fn compute_max_risk_raw(
             .map(|d| d.total)
             .unwrap_or(0);
 
-        let raw = colors::compute_raw_risk(node.pagerank, coverage_pct, clippy_count);
+        // Conservative normalization: always use full penalty (1.0) so the maximum
+        // is not under-estimated by grade-based reductions.
+        let raw = colors::compute_raw_risk(node.pagerank, coverage_pct, clippy_count, 1.0_f64);
         if raw > max { max = raw; }
     }
     if max <= 0.0 { 1.0 } else { max }

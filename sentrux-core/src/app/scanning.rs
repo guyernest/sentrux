@@ -62,6 +62,7 @@ impl SentruxApp {
                         self.state.graph_metrics_report.as_ref(),
                         self.state.coverage_report.as_ref(),
                         self.state.clippy_report.as_ref(),
+                        self.state.pmat_report.as_ref(),
                     );
                     // Write a new snapshot now that coverage data is available.
                     // The scan-completion snapshot was written with coverage: None;
@@ -166,6 +167,7 @@ impl SentruxApp {
             self.state.graph_metrics_report.as_ref(),
             self.state.coverage_report.as_ref(),
             self.state.clippy_report.as_ref(),
+            self.state.pmat_report.as_ref(),
         );
         self.state.coverage_running = false;
         self.state.community_highlight = None;
