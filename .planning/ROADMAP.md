@@ -15,7 +15,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Cleanup** - Remove MCP server, plugin system, and non-Rust/TS/JS language support (completed 2026-03-15)
 - [x] **Phase 2: PMAT Integration** - Integrate PMAT as analysis engine; display TDG grades and health/mutation panels (completed 2026-03-15)
 - [x] **Phase 3: Git Diff Overlay** - Color-code treemap nodes by git change recency with selectable time windows (completed 2026-03-15)
-- [ ] **Phase 4: GSD Phase Overlay** - Color-code treemap nodes by GSD planning phase; complete triple overlay system
+- [x] **Phase 4: GSD Phase Overlay** - Color-code treemap nodes by GSD planning phase; complete triple overlay system (completed 2026-03-15)
+- [x] **Phase 5: Improve Time Alignment** - Align three temporal streams into a hierarchical navigation bar with click-to-zoom filtering and diff-over-time analysis (completed 2026-03-16)
+- [x] **Phase 6: AI Monitoring UX** - Phase-aware change visibility, git diff +/- badges, smarter risk model (completed 2026-03-17)
 
 ## Phase Details
 
