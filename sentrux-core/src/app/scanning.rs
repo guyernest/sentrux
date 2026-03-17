@@ -178,6 +178,9 @@ impl SentruxApp {
         self.state.scanning = false;
         // Trigger snapshot write on next frame via the established flag pattern
         self.state.snapshot_write_requested = true;
+        // Re-parse GSD phases on every scan so the timeline reflects ROADMAP.md changes
+        // (new phases added, phases completed, etc.)
+        self.state.gsd_phase_requested = true;
         self.state.rebuild_file_index();
         self.request_layout();
         if self.watcher_handle.is_none() || self.state.root_path != self.last_scanned_root {
