@@ -157,8 +157,8 @@ fn draw_section_rect(
             }
         }
 
-        // Git diff directory badge: summed +/- across children (AIMON-03)
-        if ctx.color_mode == crate::layout::types::ColorMode::GitDiff {
+        // Git diff directory badge: summed +/- in header strip (AIMON-03)
+        if ctx.color_mode == crate::layout::types::ColorMode::GitDiff && strip_h > 4.0 {
             if let Some(diff_report) = ctx.git_diff_report {
                 let dir_prefix = if r.path.is_empty() || r.path == "/" {
                     String::new()
@@ -166,7 +166,12 @@ fn draw_section_rect(
                     format!("{}/", r.path)
                 };
                 let (added, removed) = aggregate_dir_diff(&diff_report.by_file, &dir_prefix);
-                draw_diff_badge(dctx.painter, screen_rect, added, removed);
+                // Draw in header strip (right-aligned) instead of bottom-right of full rect
+                let header_strip = egui::Rect::from_min_size(
+                    screen_rect.left_top(),
+                    egui::vec2(screen_rect.width(), strip_h),
+                );
+                draw_diff_badge(dctx.painter, header_strip, added, removed);
             }
         }
     }
@@ -250,7 +255,7 @@ fn aggregate_dir_diff(
 /// Layout: removed (red) drawn at right edge, added (green) to its left.
 /// Font: monospace 8pt (matches draw_delta_arrow).
 fn draw_diff_badge(painter: &egui::Painter, rect: egui::Rect, added: u32, removed: u32) {
-    if rect.width() < 60.0 || rect.height() < 14.0 {
+    if rect.width() < 60.0 || rect.height() < 10.0 {
         return;
     }
     if added == 0 && removed == 0 {
