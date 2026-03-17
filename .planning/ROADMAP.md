@@ -135,3 +135,13 @@ Plans:
 - [ ] 05-02-PLAN.md — Timeline navigator widget replacing proportional phase bar
 - [ ] 05-03-PLAN.md — Click-to-zoom filtering, snapshot pipeline wiring, reset button
 - [ ] 05-04-PLAN.md — Delta arrow overlay on treemap nodes and detail panel delta section
+
+### Phase 6: AI Monitoring UX
+
+**Goal:** Optimize the treemap for monitoring AI code assistants in real-time — phase-aware change visibility (default to current phase's changes instead of fading heat), git diff +/- line counts on file nodes, and a smarter risk model that weights centrality by complexity and coverage gaps instead of raw PageRank
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 6 to break down)

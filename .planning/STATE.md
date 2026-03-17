@@ -77,6 +77,7 @@ Progress: [█████░░░░░] 50%
 
 - Phase 02.1 inserted after Phase 2: Rust Deep Analysis (INSERTED) — integrate PMAT code rank, test coverage (cargo-llvm-cov), and clippy advanced linting into treemap visualization
 - Phase 5 added: Improve Time Alignment — multi-scale timeline navigation (time/commits/phases/milestones), diff-over-time analysis, and project health tracking
+- Phase 6 added: AI Monitoring UX — phase-aware change visibility, git diff +/- counts on nodes, smarter risk model (centrality × complexity × coverage)
 
 ### Decisions
 
