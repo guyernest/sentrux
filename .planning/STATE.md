@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 06-ai-monitoring-ux 06-02-PLAN.md
-last_updated: "2026-03-17T03:04:23.392Z"
+stopped_at: Completed 06-ai-monitoring-ux 06-03-PLAN.md
+last_updated: "2026-03-17T03:05:46.448Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
   percent: 50
 ---
 
@@ -72,6 +72,7 @@ Progress: [█████░░░░░] 50%
 | Phase 05-improve-time-alignment P04 | 10 | 1 tasks | 2 files |
 | Phase 06-ai-monitoring-ux P01 | 18 | 1 tasks | 3 files |
 | Phase 06-ai-monitoring-ux P02 | 3 | 1 tasks | 1 files |
+| Phase 06-ai-monitoring-ux P03 | 5 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,9 @@ Recent decisions affecting current work:
 - [Phase 06-ai-monitoring-ux]: Badge minimum width 60px: +1234 -567 is ~12 chars * 5px = 60px; narrower rects would overflow
 - [Phase 06-ai-monitoring-ux]: Skip +0 -0 badges: zero-count files have no line-count signal; the color already conveys no-change via muted gray
 - [Phase 06-ai-monitoring-ux]: aggregate_dir_diff returns (u32, u32) not Option: zero aggregate is valid for root directories; caller guards on both-zero inside draw_diff_badge
+- [Phase 06-ai-monitoring-ux]: try_apply_auto_diff called BEFORE storing report: avoids Rust borrow conflict; passes &report reference then moves report into Some(report)
+- [Phase 06-ai-monitoring-ux]: rposition() selects highest-indexed InProgress phase: correct when multiple phases are in-progress simultaneously
+- [Phase 06-ai-monitoring-ux]: auto_diff_active guard: timeline_selection.is_some() returns early — user navigation always wins over auto-switch
 
 ### Pending Todos
 
@@ -157,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T03:04:23.390Z
-Stopped at: Completed 06-ai-monitoring-ux 06-02-PLAN.md
+Last session: 2026-03-17T03:05:46.445Z
+Stopped at: Completed 06-ai-monitoring-ux 06-03-PLAN.md
 Resume file: None

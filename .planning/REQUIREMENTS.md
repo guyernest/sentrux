@@ -91,8 +91,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **AIMON-01**: Risk color mode multiplies by TDG complexity_penalty so A+ hub files no longer false-alarm as high-risk
 - [x] **AIMON-02**: In GitDiff mode, file rects show green "+N" and red "-N" line count badges at bottom-right
 - [x] **AIMON-03**: Directory rects in GitDiff mode show summed +/- line counts across all children
-- [ ] **AIMON-04**: On app open with a GSD project containing an InProgress phase, color_mode auto-switches to GitDiff showing that phase's commit range
-- [ ] **AIMON-05**: Auto-diff does not override a user's existing timeline_selection
+- [x] **AIMON-04**: On app open with a GSD project containing an InProgress phase, color_mode auto-switches to GitDiff showing that phase's commit range
+- [x] **AIMON-05**: Auto-diff does not override a user's existing timeline_selection
 
 ## v2 Requirements
 
