@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5 → 6
 | 3. Git Diff Overlay | 3/3 | Complete    | 2026-03-15 |
 | 4. GSD Phase Overlay | 2/3 | In Progress|  |
 | 5. Improve Time Alignment | 3/4 | In Progress|  |
-| 6. AI Monitoring UX | 1/3 | In Progress|  |
+| 6. AI Monitoring UX | 2/3 | In Progress|  |
 
 ### Phase 5: Improve Time Alignment
 
@@ -147,7 +147,7 @@ Plans:
   2. In GitDiff mode, file rects show green "+N" and red "-N" line count badges at the bottom-right; directory rects show summed counts
   3. Opening sentrux on a GSD project with an InProgress phase automatically activates GitDiff mode showing that phase's changes
   4. A user who has made a manual timeline selection is not affected by the auto-switch
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 06-01-PLAN.md — Smarter risk model: complexity_penalty parameter derived from TDG grade

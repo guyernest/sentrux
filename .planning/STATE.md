@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 06-ai-monitoring-ux 06-01-PLAN.md
-last_updated: "2026-03-17T02:58:15.716Z"
+stopped_at: Completed 06-ai-monitoring-ux 06-02-PLAN.md
+last_updated: "2026-03-17T03:04:23.392Z"
 last_activity: 2026-03-14 — Roadmap created; ready to begin Phase 1 planning
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 22
-  completed_plans: 20
+  completed_plans: 21
   percent: 50
 ---
 
@@ -71,6 +71,7 @@ Progress: [█████░░░░░] 50%
 | Phase 05-improve-time-alignment P03 | 2 | 2 tasks | 2 files |
 | Phase 05-improve-time-alignment P04 | 10 | 1 tasks | 2 files |
 | Phase 06-ai-monitoring-ux P01 | 18 | 1 tasks | 3 files |
+| Phase 06-ai-monitoring-ux P02 | 3 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 05-improve-time-alignment]: delta_section shown when timeline_delta_report is Some regardless of color_mode
 - [Phase 06-ai-monitoring-ux]: complexity_penalty = 1.0 - grade_to_t(grade) as f64: A+ yields 0.0 (near-zero risk), F/unknown yields 1.0 (full penalty, identity); makes the parameter a multiplier not a subtracted offset
 - [Phase 06-ai-monitoring-ux]: compute_max_risk_raw uses conservative penalty=1.0 for all nodes: prevents under-estimating the maximum when A+ hub files dominate graph-metrics
+- [Phase 06-ai-monitoring-ux]: Badge minimum width 60px: +1234 -567 is ~12 chars * 5px = 60px; narrower rects would overflow
+- [Phase 06-ai-monitoring-ux]: Skip +0 -0 badges: zero-count files have no line-count signal; the color already conveys no-change via muted gray
+- [Phase 06-ai-monitoring-ux]: aggregate_dir_diff returns (u32, u32) not Option: zero aggregate is valid for root directories; caller guards on both-zero inside draw_diff_badge
 
 ### Pending Todos
 
@@ -153,6 +157,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T02:58:15.712Z
-Stopped at: Completed 06-ai-monitoring-ux 06-01-PLAN.md
+Last session: 2026-03-17T03:04:23.390Z
+Stopped at: Completed 06-ai-monitoring-ux 06-02-PLAN.md
 Resume file: None
