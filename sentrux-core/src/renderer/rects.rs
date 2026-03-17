@@ -164,14 +164,15 @@ fn draw_section_rect(
             }
         }
 
-        // Delta arrows to the left of the diff badge (offset by shrinking the rect)
+        // Delta arrows at the center of the header strip
         if let Some(delta_report) = ctx.delta_report {
             let agg = aggregate_dir_delta(&delta_report.by_file, &dir_prefix);
             if let Some(agg_delta) = agg {
-                // Shrink the rect so delta arrows don't overlap the diff badge
+                // Use the left half of the header for delta arrows (center-right aligned)
+                let mid_x = header_strip.left() + header_strip.width() * 0.5;
                 let delta_rect = egui::Rect::from_min_max(
                     header_strip.left_top(),
-                    egui::pos2(header_strip.right() - 80.0, header_strip.bottom()),
+                    egui::pos2(mid_x, header_strip.bottom()),
                 );
                 if delta_rect.width() > 24.0 {
                     draw_delta_arrow(dctx.painter, delta_rect, &agg_delta);
@@ -202,9 +203,9 @@ fn aggregate_dir_delta(
         return None;
     }
 
-    let tdg_sum: i32 = children.iter().map(|d| d.tdg_grade_delta).sum();
-    // Use signum instead of integer division to avoid truncating small improvements
-    let avg_tdg = tdg_sum.signum();
+    // Sum TDG deltas across children. draw_delta_arrow uses abs() >= 3 threshold,
+    // so the sum must preserve magnitude (not signum) for directories to show arrows.
+    let avg_tdg: i32 = children.iter().map(|d| d.tdg_grade_delta).sum();
 
     let cov_avg: Option<f64> = {
         let cov_entries: Vec<f64> = children.iter()
@@ -543,7 +544,7 @@ fn draw_delta_arrow(
     rect: egui::Rect,
     delta: &FileDeltaEntry,
 ) {
-    if rect.width() < 24.0 || rect.height() < 14.0 {
+    if rect.width() < 24.0 || rect.height() < 10.0 {
         return;
     }
 
