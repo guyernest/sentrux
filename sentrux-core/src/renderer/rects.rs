@@ -143,35 +143,39 @@ fn draw_section_rect(
         draw_section_header(dctx, screen_rect, r, ctx, strip_h);
     }
 
-    // Delta arrow overlay for directory: aggregate child deltas
-    if lod_full {
-        if let Some(delta_report) = ctx.delta_report {
-            let dir_prefix = if r.path.is_empty() || r.path == "/" {
-                String::new()
-            } else {
-                format!("{}/", r.path)
-            };
-            let agg = aggregate_dir_delta(&delta_report.by_file, &dir_prefix);
-            if let Some(agg_delta) = agg {
-                draw_delta_arrow(dctx.painter, screen_rect, &agg_delta);
+    // Directory header overlays: delta arrows + diff badges, drawn side by side
+    // in the header strip to avoid overlapping child rects.
+    if lod_full && strip_h > 4.0 && screen_rect.width() > 60.0 {
+        let header_strip = egui::Rect::from_min_size(
+            screen_rect.left_top(),
+            egui::vec2(screen_rect.width(), strip_h),
+        );
+        let dir_prefix = if r.path.is_empty() || r.path == "/" {
+            String::new()
+        } else {
+            format!("{}/", r.path)
+        };
+
+        // Diff badge first (rightmost in header)
+        if ctx.color_mode == crate::layout::types::ColorMode::GitDiff {
+            if let Some(diff_report) = ctx.git_diff_report {
+                let (added, removed) = aggregate_dir_diff(&diff_report.by_file, &dir_prefix);
+                draw_diff_badge(dctx.painter, header_strip, added, removed);
             }
         }
 
-        // Git diff directory badge: summed +/- in header strip (AIMON-03)
-        if ctx.color_mode == crate::layout::types::ColorMode::GitDiff && strip_h > 4.0 {
-            if let Some(diff_report) = ctx.git_diff_report {
-                let dir_prefix = if r.path.is_empty() || r.path == "/" {
-                    String::new()
-                } else {
-                    format!("{}/", r.path)
-                };
-                let (added, removed) = aggregate_dir_diff(&diff_report.by_file, &dir_prefix);
-                // Draw in header strip (right-aligned) instead of bottom-right of full rect
-                let header_strip = egui::Rect::from_min_size(
-                    screen_rect.left_top(),
-                    egui::vec2(screen_rect.width(), strip_h),
+        // Delta arrows to the left of the diff badge (offset by shrinking the rect)
+        if let Some(delta_report) = ctx.delta_report {
+            let agg = aggregate_dir_delta(&delta_report.by_file, &dir_prefix);
+            if let Some(agg_delta) = agg {
+                // Shrink the rect so delta arrows don't overlap the diff badge
+                let delta_rect = egui::Rect::from_min_max(
+                    header_strip.left_top(),
+                    egui::pos2(header_strip.right() - 80.0, header_strip.bottom()),
                 );
-                draw_diff_badge(dctx.painter, header_strip, added, removed);
+                if delta_rect.width() > 24.0 {
+                    draw_delta_arrow(dctx.painter, delta_rect, &agg_delta);
+                }
             }
         }
     }
